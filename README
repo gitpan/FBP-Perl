@@ -1,0 +1,31 @@
+NAME
+    FBP::Perl - Generate Perl GUI code from wxFormBuilder .fbp files
+
+SYNOPSIS
+      my $generator = FBP::Perl->new(
+          dialog => $fbp_object->dialog('MyDialog')
+      );
+
+DESCRIPTION
+    TO BE COMPLETED
+
+SUPPORT
+    Bugs should be reported via the CPAN bug tracker at
+
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=FBP-Perl>
+
+    For other issues, or commercial enhancement or support, contact the
+    author.
+
+AUTHOR
+    Adam Kennedy <adamk@cpan.org>
+
+COPYRIGHT
+    Copyright 2010 Adam Kennedy.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
+    The full text of the license can be found in the LICENSE file included
+    with this module.
+
