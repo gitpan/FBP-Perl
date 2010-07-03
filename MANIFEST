@@ -18,6 +18,7 @@ t/01_compile.t
 t/02_simple.t
 t/data/padre.fbp
 t/data/simple.fbp
+t/data/simple.pl
 xt/meta.t
 xt/pmv.t
 xt/pod.t
