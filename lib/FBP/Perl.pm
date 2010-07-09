@@ -22,9 +22,9 @@ use 5.008005;
 use strict;
 use warnings;
 use Mouse 0.61;
-use FBP   0.09 ();
+use FBP   0.10 ();
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 has project => (
 	is       => 'ro',
@@ -73,8 +73,9 @@ sub dialog_class {
 	my $wx      = $self->use_wx($dialog);
 	my $isa     = $self->dialog_isa($dialog);
 	my $new     = $self->dialog_new($dialog);
-	my @methods = map { @$_, "" } $self->dialog_methods($dialog);
-	my @lines   = (
+	my $methods = $self->dialog_methods($dialog);
+
+	return [
 		"package $package;",
 		"",
 		@$pragma,
@@ -84,11 +85,10 @@ sub dialog_class {
 		@$isa,
 		"",
 		@$new,
+		@$methods,
 		"",
-		@methods,
 		"1;",
-	);
-	return \@lines;
+	];
 }
 
 sub dialog_new {
@@ -100,7 +100,7 @@ sub dialog_new {
 	              map { $self->window_create($_) }
 	              $dialog->find( isa => 'FBP::Window' );
 
-	my @lines  = (
+	return [
 		"sub new {",
 		"\tmy \$class  = shift;",
 		"\tmy \$parent = shift;",
@@ -111,9 +111,7 @@ sub dialog_new {
 		@sizers,
 		"\treturn \$self;",
 		"}",
-	);
-
-	return \@lines;
+	];
 }
 
 sub dialog_super {
@@ -124,7 +122,8 @@ sub dialog_super {
 	my $position = $self->object_position($dialog);
 	my $size     = $self->object_size($dialog);
 	my $style    = $self->wx( $dialog->styles || 'wxDEFAULT_DIALOG_STYLE' );
-	my @lines    = (
+
+	return [
 		"my \$self = \$class->SUPER::new(",
 		"\t\$parent,",
 		"\t$id,",
@@ -133,25 +132,7 @@ sub dialog_super {
 		"\t$size,",
 		( $style ? "\t$style," : () ),
 		");",
-	);
-	return \@lines;
-}
-
-sub dialog_methods {
-	my $self    = shift;
-	my $dialog  = shift;
-	my @methods = ();
-
-	# Only one type of event is currently supported.
-	# Eventually this needs to be a lot more in depth.
-	my @buttons = grep {
-		$_->OnButtonClick
-	} $dialog->find( isa => 'FBP::Button' );
-	foreach my $button ( @buttons ) {
-		push @methods, $self->button_method( $button->OnButtonClick );
-	}
-
-	return @methods;
+	];
 }
 
 sub dialog_sizers {
@@ -168,21 +149,20 @@ sub dialog_sizers {
 	my $variable = $self->object_variable($sizer);
 	my $boxsizer = $self->boxsizer_create($sizer);
 
-	my @lines = (
+	return [
 		@$boxsizer,
 		"",
 		"\$self->SetSizer($variable);",
 		"\$self->Layout;",
 		"$variable->Fit(\$self);",
 		"",
-	);
-
-	return \@lines;
+	];
 }
 
 sub dialog_isa {
 	my $self   = shift;
 	my $dialog = shift;
+
 	return [
 		"our \@ISA     = 'Wx::Dialog';",
 	];
@@ -198,34 +178,43 @@ sub dialog_isa {
 sub window_create {
 	my $self   = shift;
 	my $window = shift;
+	my $lines  = undef;
 	if ( $window->isa('FBP::Button') ) {
-		return $self->button_create($window);
+		$lines = $self->button_create($window);
+	} elsif ( $window->isa('FBP::CheckBox') ) {
+		$lines = $self->checkbox_create($window);
 	} elsif ( $window->isa('FBP::Choice') ) {
-		return $self->choice_create($window);
+		$lines = $self->choice_create($window);
 	} elsif ( $window->isa('FBP::ComboBox') ) {
-		return $self->combobox_create($window);
+		$lines = $self->combobox_create($window);
 	} elsif ( $window->isa('FBP::HtmlWindow') ) {
-		return $self->htmlwindow_create($window);
+		$lines = $self->htmlwindow_create($window);
 	} elsif ( $window->isa('FBP::ListBox') ) {
-		return $self->listbox_create($window);
+		$lines = $self->listbox_create($window);
 	} elsif ( $window->isa('FBP::ListCtrl') ) {
-		return $self->listctrl_create($window);
+		$lines = $self->listctrl_create($window);
 	} elsif ( $window->isa('FBP::StaticLine') ) {
-		return $self->staticline_create($window);
+		$lines = $self->staticline_create($window);
 	} elsif ( $window->isa('FBP::StaticText') ) {
-		return $self->statictext_create($window);
+		$lines = $self->statictext_create($window);
 	} else {
 		die 'Cannot create constructor code for ' . ref($window);
 	}
+
+	# Add the bindings the window
+	my $bindings = $self->window_bindings($window);
+	push @$lines, @$bindings;
+
+	return $lines;
 }
 
 sub button_create {
 	my $self     = shift;
-	my $button   = shift;
-	my $lexical  = $self->object_lexical($button) ? 'my ' : '';
-	my $variable = $self->object_variable($button);
-	my $id       = $self->wx( $button->id );
-	my $label    = $self->object_label($button);
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $label    = $self->object_label($control);
 	my @lines    = (
 		"$lexical$variable = Wx::Button->new(",
 		"\t\$self,",
@@ -233,51 +222,49 @@ sub button_create {
 		"\t$label,",
 		");",
 	);
-	if ( $button->default ) {
+	if ( $control->default ) {
 		push @lines, "$variable->SetDefault;";
 	}
-	unless ( $button->enabled ) {
+	unless ( $control->enabled ) {
 		push @lines, "$variable->Disable;";
 	}
-	if ( $button->OnButtonClick ) {
-		my $method = $button->OnButtonClick;
-		push @lines, (
-			"",
-			"Wx::Event::EVT_BUTTON(",
-			"\t\$self,",
-			"\t$variable,",
-			"\tsub {",
-			"\t\tshift->$method(\@_);",
-			"\t},",
-			");",
-		);
-	}
+
 	return \@lines;
 }
 
-sub button_method {
-	my $self   = shift;
-	my $method = shift;
-	my @lines  = (
-		"sub $method {",
-		"\tmy \$self  = shift;",
-		"\tmy \$event = shift;",
-		"",
-		"\tdie 'TO BE COMPLETED';",
-		"}",
-	);
-	return \@lines;
+sub checkbox_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $label    = $self->object_label($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+	my $style    = $self->wx( $control->styles );
+
+	return [
+		"$lexical$variable = Wx::CheckBox->new(",
+		"\t\$self,",
+		"\t$id,",
+		"\t$label,",
+		"\t$position,",
+		"\t$size,",
+		( $style ? "\t$style," : () ),
+		");",
+	];
 }
 
 sub choice_create {
 	my $self     = shift;
-	my $choice   = shift;
-	my $lexical  = $self->object_lexical($choice) ? 'my ' : '';
-	my $variable = $self->object_variable($choice);
-	my $id       = $self->wx( $choice->id );
-	my $position = $self->object_position($choice);
-	my $size     = $self->object_size($choice);
-	my @lines    = (
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+
+	return [
 		"$lexical$variable = Wx::Choice->new(",
 		"\t\$self,",
 		"\t$id,",
@@ -285,21 +272,21 @@ sub choice_create {
 		"\t$size,",
 		"\t[ ],",
 		");",
-	);
-	return \@lines;
+	];
 }
 
 sub combobox_create {
 	my $self     = shift;
-	my $combo    = shift;
-	my $lexical  = $self->object_lexical($combo) ? 'my ' : '';
-	my $variable = $self->object_variable($combo);
-	my $id       = $self->wx( $combo->id );
-	my $value    = $self->quote( $combo->value );
-	my $position = $self->object_position($combo);
-	my $size     = $self->object_size($combo);
-	my $style    = $self->wx( $combo->styles );
-	my @lines    = (
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $value    = $self->quote( $control->value );
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+	my $style    = $self->wx( $control->styles );
+
+	return [
 		"$lexical$variable = Wx::ComboBox->new(",
 		"\t\$self,",
 		"\t$id,",
@@ -309,20 +296,20 @@ sub combobox_create {
 		"\t[ ],",
 		( $style ? "\t$style," : () ),
 		");",
-	);
-	return \@lines;
+	];
 }
 
 sub htmlwindow_create {
 	my $self     = shift;
-	my $html     = shift;
-	my $lexical  = $self->object_lexical($html) ? 'my ' : '';
-	my $variable = $self->object_variable($html);
-	my $id       = $self->wx( $html->id );
-	my $position = $self->object_position($html);
-	my $size     = $self->object_size($html);
-	my $style    = $self->wx( $html->styles );	
-	my @lines    = (
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+	my $style    = $self->wx( $control->styles );
+
+	return [
 		"$lexical$variable = Wx::HtmlWindow->new(",
 		"\t\$self,",
 		"\t$id,",
@@ -330,20 +317,20 @@ sub htmlwindow_create {
 		"\t$size,",
 		( $style ? "\t$style," : () ),
 		");",
-	);
-	return \@lines;	
+	];
 }
 
 sub listbox_create {
 	my $self     = shift;
-	my $listbox  = shift;
-	my $lexical  = $self->object_lexical($listbox) ? 'my ' : '';
-	my $variable = $self->object_variable($listbox);
-	my $id       = $self->wx( $listbox->id );
-	my $position = $self->object_position($listbox);
-	my $size     = $self->object_size($listbox);
-	my $style    = $self->wx( $listbox->styles );	
-	my @lines    = (
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+	my $style    = $self->wx( $control->styles );
+	
+	return [
 		"$lexical$variable = Wx::ListBox->new(",
 		"\t\$self,",
 		"\t$id,",
@@ -352,20 +339,20 @@ sub listbox_create {
 		"\t[ ],",
 		( $style ? "\t$style," : () ),
 		");",
-	);
-	return \@lines;
+	];
 }
 
 sub listctrl_create {
 	my $self     = shift;
-	my $listctrl  = shift;
-	my $lexical  = $self->object_lexical($listctrl) ? 'my ' : '';
-	my $variable = $self->object_variable($listctrl);
-	my $id       = $self->wx( $listctrl->id );
-	my $position = $self->object_position($listctrl);
-	my $size     = $self->object_size($listctrl);
-	my $style    = $self->wx( $listctrl->styles );	
-	my @lines    = (
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+	my $style    = $self->wx( $control->styles );	
+
+	return [
 		"$lexical$variable = Wx::ListCtrl->new(",
 		"\t\$self,",
 		"\t$id,",
@@ -373,37 +360,37 @@ sub listctrl_create {
 		"\t$size,",
 		( $style ? "\t$style," : () ),
 		");",
-	);
-	return \@lines;
+	];
 }
 
 sub statictext_create {
 	my $self     = shift;
-	my $text     = shift;
-	my $lexical  = $self->object_lexical($text) ? 'my ' : '';
-	my $variable = $self->object_variable($text);
-	my $id       = $self->wx( $text->id );
-	my $label    = $self->object_label($text);
-	my @lines    = (
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $label    = $self->object_label($control);
+
+	return [
 		"$lexical$variable = Wx::StaticText->new(",
 		"\t\$self,",
 		"\t$id,",
 		"\t$label,",
 		");",
-	);
-	return \@lines;
+	];
 }
 
 sub staticline_create {
 	my $self     = shift;
-	my $line     = shift;
-	my $lexical  = $self->object_lexical($line) ? 'my ' : '';
-	my $variable = $self->object_variable($line);
-	my $id       = $self->wx( $line->id );
-	my $position = $self->object_position($line);
-	my $size     = $self->object_size($line);
-	my $style    = $self->wx( $line->styles );
-	my @lines    = (
+	my $control  = shift;
+	my $lexical  = $self->object_lexical($control) ? 'my ' : '';
+	my $variable = $self->object_variable($control);
+	my $id       = $self->wx( $control->id );
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+	my $style    = $self->wx( $control->styles );
+
+	return [
 		"$lexical$variable = Wx::StaticLine->new(",
 		"\t\$self,",
 		"\t$id,",
@@ -411,8 +398,7 @@ sub staticline_create {
 		"\t$size,",
 		( $style ? "\t$style," : () ),
 		");",
-	);
-	return \@lines;
+	];
 }
 
 sub boxsizer_create {
@@ -467,10 +453,160 @@ sub boxsizer_create {
 
 
 ######################################################################
+# Window Fragment Generators
+
+my %EVENT = (
+	# wxActivateEvent
+	OnActivate             => [ 'EVT_ACTIVATE'               ],
+	OnActivateApp          => [ 'EVT_ACTIVATE_APP'           ],
+
+	# wxCommandEvent
+	OnButtonClick          => [ 'EVT_BUTTON'                 ],
+	OnCheckBox             => [ 'EVT_CHECKBOX'               ],
+	OnChoice               => [ 'EVT_CHOICE'                 ],
+	OnCombobox             => [ 'EVT_COMBOBOX'               ],
+	OnListBox              => [ 'EVT_LISTBOX'                ],
+	OnListBoxDClick        => [ 'EVT_LISTBOX_DCLICK'         ],
+	OnText                 => [ 'EVT_TEXT'                   ],
+	OnTextEnter            => [ 'EVT_TEXT_ENTER'             ],
+	OnMenu                 => [ 'EVT_MENU'                   ],
+	OnMenuRange            => [ 'EVT_MENU_RANGE'             ],
+
+	# wxCloseEvent
+	OnClose                => [ 'EVT_CLOSE'                  ],
+
+	# wxEraseEvent
+	OnEraseBackground      => [ ''                           ],
+
+	# wxFocusEvent
+	OnKillFocus            => [ 'EVT_KILL_FOCUS'             ],
+	OnSetFocus             => [ 'EVT_SET_FOCUS'              ],
+
+	# wxIdleEvent
+	OnIdle                 => [ 'EVT_IDLE'                   ],
+
+	# wxKeyEvent
+	OnChar                 => [ 'EVT_CHAR'                   ],
+	OnKeyDown              => [ 'EVT_KEY_DOWN'               ],
+	OnKeyUp                => [ 'EVT_KEY_UP'                 ],
+
+	# wxHtmlWindow
+	OnHtmlCellClicked      => [ 'EVT_HTML_CELL_CLICKED'      ],
+	OnHtmlCellHover        => [ 'EVT_HTML_CELL_HOVER'        ],
+	OnHtmlLinkClicked      => [ 'EVT_HTML_LINK_CLICKED'      ],
+
+	# wxListEvent
+	OnListBeginDrag        => [ 'EVT_LIST_BEGIN_DRAG'        ],
+	OnListBeginRDrag       => [ 'EVT_LIST_BEGIN_RDRAG'       ],
+	OnListBeginLabelEdit   => [ 'EVT_LIST_BEGIN_LABEL_EDIT'  ],
+	OnListCacheHint        => [ 'EVT_LIST_CACHE_HINT'        ],
+	OnListEndLabelEdit     => [ 'EVT_LIST_END_LABEL_EDIT'    ],
+	OnListDeleteItem       => [ 'EVT_LIST_DELETE_ITEM'       ],
+	OnListDeleteAllItems   => [ 'EVT_LIST_DELETE_ALL_ITEMS'  ],
+	OnListInsertItem       => [ 'EVT_LIST_INSERT_ITEM'       ],
+	OnListItemActivated    => [ 'EVT_LIST_ITEM_ACTIVATED'    ],
+	OnListItemSelected     => [ 'EVT_LIST_ITEM_SELECTED'     ],
+	OnListItemDeselected   => [ 'EVT_LIST_ITEM_DESELECTED'   ],
+	OnListItemFocused      => [ 'EVT_LIST_ITEM_FOCUSED'      ],
+	OnListItemMiddleClick  => [ 'EVT_LIST_MIDDLE_CLICK'      ],
+	OnListItemRightClick   => [ 'EVT_LIST_RIGHT_CLICK'       ],
+	OnListKeyDown          => [ 'EVT_LIST_KEY_DOWN'          ],
+	OnListColClick         => [ 'EVT_LIST_COL_CLICK'         ],
+	OnListColRightClick    => [ 'EVT_LIST_COL_RIGHT_CLICK'   ],
+	OnListColBeginDrag     => [ 'EVT_LIST_COL_BEGIN_DRAG'    ],
+	OnListColDragging      => [ 'EVT_LIST_COL_DRAGGING'      ],
+	OnListColEndDrag       => [ 'EVT_LIST_COL_END_DRAG'      ],
+
+	# wxMouseEvent
+	OnEnterWindow          => [ 'EVT_ENTER_WINDOW'           ],
+	OnLeaveWindow          => [ 'EVT_LEAVE_WINDOW'           ],
+	OnLeftDClick           => [ 'EVT_LEFT_DCLICK'            ],
+	OnLeftDown             => [ 'EVT_LEFT_DOWN'              ],
+	OnLeftUp               => [ 'EVT_LEFT_UP'                ],
+	OnMiddleClick          => [ 'EVT_MIDDLE_CLICK'           ],
+	OnMiddleDown           => [ 'EVT_MIDDLE_DOWN'            ],
+	OnMiddleUp             => [ 'EVT_MIDDLE_UP'              ],
+	OnMotion               => [ 'EVT_MOTION'                 ],
+	OnMouseEvents          => [ 'EVT_MOUSE_EVENTS'           ],
+	OnMouseWheel           => [ 'EVT_MOUSE_WHEEL'            ],
+	OnRightDClick          => [ 'EVT_RIGHT_DCLICK'           ],
+	OnRightDown            => [ 'EVT_RIGHT_DOWN'             ],
+	OnRightUp              => [ 'EVT_RIGHT_UP'               ],
+
+	# wxNotebookEvent
+	OnNotebookPageChanging => [ 'EVT_NOTEBOOK_PAGE_CHANGING' ],
+	OnNotebookPageChanged  => [ 'EVT_NOTEBOOK_PAGE_CHANGED'  ],
+);
+
+sub window_bindings {
+	my $self     = shift;
+	my $window   = shift;
+	my $variable = $self->object_variable($window);
+
+	my @lines = ();
+	foreach my $attribute ( sort keys %EVENT ) {
+		next unless $window->can($attribute);
+
+		# Is there something to bind to
+		my $method = $window->$attribute() or next;
+
+		# Add the binding for it
+		my $macro = $EVENT{$attribute}->[0];
+		push @lines, (
+			"",
+			"Wx::Event::$macro(",
+			"\t\$self,",
+			"\t$variable,",
+			"\tsub {",
+			"\t\tshift->$method(\@_);",
+			"\t},",
+			");",
+		);
+	}
+
+	return \@lines;
+}
+
+sub dialog_methods {
+	my $self   = shift;
+	my $dialog = shift;
+
+	# Generate the list of all methods
+	my @methods = ();
+	foreach my $window ( $dialog->find( isa => 'FBP::Window' ) ) {
+		push @methods, grep {
+			defined $_ and length $_
+		} map {
+			$window->$_()
+		} grep {
+			$window->can($_)
+		} sort keys %EVENT;
+	}
+
+	# Generate the code for the methods
+	return [
+		map { (
+			"",
+			"sub $_ {",
+			"\tmy \$self  = shift;",
+			"\tmy \$event = shift;",
+			"",
+			"\tdie 'TO BE COMPLETED';",
+			"}"
+		) } sort @methods
+	];
+}
+
+
+
+
+
+######################################################################
 # Common Fragment Generators
 
 my %OBJECT_UNLEXICAL = (
 	'FBP::Button'     => 1,
+	'FBP::CheckBox'   => 1,
 	'FBP::Choice'     => 1,
 	'FBP::ComboBox'   => 1,
 	'FBP::HtmlWindow' => 1,
@@ -551,7 +687,7 @@ sub use_pragma {
 
 sub use_wx {
 	my $self   = shift;
-	my $dialog = shift;
+	my $object = shift;
 	return [
 		"use Wx ':everything';",
 	];
