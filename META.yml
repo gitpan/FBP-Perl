@@ -24,11 +24,11 @@ no_index:
     - t
     - xt
 requires:
-  FBP: 0.11
+  FBP: 0.12
   Mouse: 0.61
   perl: 5.8.5
 resources:
   ChangeLog: http://fisheye2.atlassian.com/changelog/cpan/trunk/FBP-Perl
   license: http://dev.perl.org/licenses/
   repository: http://svn.ali.as/cpan/trunk/FBP-Perl
-version: 0.09
+version: 0.10
