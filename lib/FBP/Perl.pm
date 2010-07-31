@@ -21,10 +21,11 @@ TO BE COMPLETED
 use 5.008005;
 use strict;
 use warnings;
-use Mouse 0.61;
-use FBP   0.12 ();
+use Mouse         0.61;
+use FBP           0.13 ();
+use Data::Dumper 2.122 ();
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 has project => (
 	is       => 'ro',
@@ -196,6 +197,8 @@ sub window_create {
 		$lines = $self->staticline_create($window);
 	} elsif ( $window->isa('FBP::StaticText') ) {
 		$lines = $self->statictext_create($window);
+	} elsif ( $window->isa('FBP::TextCtrl') ) {
+		$lines = $self->textctrl_create($window);
 	} else {
 		die 'Cannot create constructor code for ' . ref($window);
 	}
@@ -400,6 +403,31 @@ sub staticline_create {
 	];
 }
 
+sub textctrl_create {
+	my $self      = shift;
+	my $control   = shift;
+	my $lexical   = $self->object_lexical($control) ? 'my ' : '';
+	my $variable  = $self->object_variable($control);
+	my $id        = $self->wx( $control->id );
+	my $value     = $self->quote( $control->value );
+	my $position  = $self->object_position($control);
+	my $size      = $self->object_size($control);
+	my $style     = $self->wx( $control->styles );
+	my $maxlength = $control->maxlength;
+
+	return [
+		"$lexical$variable = Wx::TextCtrl->new(",
+		"\t\$self,",
+		"\t$id,",
+		"\t$value,",
+		"\t$position,",
+		"\t$size,",
+		( $style ? "\t$style," : () ),
+		");",
+		( $maxlength ? "$variable->SetMaxLength( $maxlength );" : () ),
+	];	
+}
+
 
 
 
@@ -410,10 +438,14 @@ sub staticline_create {
 sub sizer_create {
 	my $self  = shift;
 	my $sizer = shift;
-	if ( $sizer->isa('FBP::BoxSizer') ) {
-		return $self->boxsizer_create($sizer);
+	if ( $sizer->isa('FBP::FlexGridSizer') ) {
+		return $self->flexgridsizer_create($sizer);
 	} elsif ( $sizer->isa('FBP::GridSizer') ) {
 		return $self->gridsizer_create($sizer);
+	} elsif ( $sizer->isa('FBP::StaticBoxSizer') ) {
+		return $self->staticboxsizer_create($sizer);
+	} elsif ( $sizer->isa('FBP::BoxSizer') ) {
+		return $self->boxsizer_create($sizer);
 	} else {
 		die "Cannot create constructor code for " . ref($sizer);
 	}
@@ -466,6 +498,57 @@ sub boxsizer_create {
 	return \@lines;
 }
 
+sub staticboxsizer_create {
+	my $self     = shift;
+	my $sizer    = shift;
+	my $lexical  = $self->object_lexical($sizer) ? 'my ' : '';
+	my $variable = $self->object_variable($sizer);
+	my $label    = $self->object_label($sizer);
+	my $orient   = $self->wx( $sizer->orient );
+
+	# Add the content for child sizers
+	my @lines = map {
+		( @$_, "" )
+	} map {
+		$self->sizer_create($_)
+	} grep {
+		$_->isa('FBP::Sizer')
+	} map {
+		$_->children->[0]
+	} @{$sizer->children};
+
+	# Add the content for this sizer
+	push @lines, "$lexical$variable = Wx::StaticBoxSizer->new(";
+	push @lines, "\t$label,";
+	push @lines, "\t$orient,";
+	push @lines, ");";
+	foreach my $item ( @{$sizer->children} ) {
+		my $child  = $item->children->[0];
+		if ( $child->isa('FBP::Spacer') ) {
+			my $params = join(
+				', ',
+				$child->width,
+				$child->height,
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		} else {
+			my $params = join(
+				', ',
+				$self->object_variable($child),
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		}
+	}
+
+	return \@lines;
+}
+
 sub gridsizer_create {
 	my $self     = shift;
 	my $sizer    = shift;
@@ -491,6 +574,62 @@ sub gridsizer_create {
 
 	# Add the content for this sizer
 	push @lines, "$lexical$variable = Wx::GridSizer->new( $params );";
+	foreach my $item ( @{$sizer->children} ) {
+		my $child  = $item->children->[0];
+		if ( $child->isa('FBP::Spacer') ) {
+			my $params = join(
+				', ',
+				$child->width,
+				$child->height,
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		} else {
+			my $params = join(
+				', ',
+				$self->object_variable($child),
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		}
+	}
+
+	return \@lines;
+}
+
+sub flexgridsizer_create {
+	my $self      = shift;
+	my $sizer     = shift;
+	my $lexical   = $self->object_lexical($sizer) ? 'my ' : '';
+	my $variable  = $self->object_variable($sizer);
+	my $direction = $self->wx( $sizer->flexible_direction );
+	my $growmode  = $self->wx( $sizer->non_flexible_grow_mode );
+	my $params    = join( ', ',
+		$sizer->rows,
+		$sizer->cols,
+		$sizer->vgap,
+		$sizer->hgap,
+	);
+
+	# Add the content for child sizers
+	my @lines = map {
+		( @$_, "" )
+	} map {
+		$self->sizer_create($_)
+	} grep {
+		$_->isa('FBP::Sizer')
+	} map {
+		$_->children->[0]
+	} @{$sizer->children};
+
+	# Add the content for this sizer
+	push @lines, "$lexical$variable = Wx::FlexGridSizer->new( $params );";
+	push @lines, "$variable->SetFlexibleDirection( $direction );";
+	push @lines, "$variable->SetNonFlexibleGrowMode( $growmode );";
 	foreach my $item ( @{$sizer->children} ) {
 		my $child  = $item->children->[0];
 		if ( $child->isa('FBP::Spacer') ) {
@@ -802,7 +941,18 @@ sub wx {
 sub quote {
 	my $self   = shift;
 	my $string = shift;
-	return '"' . quotemeta($string) . '"';
+
+	# This gets tricky if you ever hit weird characters
+	# or Unicode, so hand off to an expert.
+	my $code = do {
+		local $Data::Dumper::Terse = 1;
+		local $Data::Dumper::Useqq = 1;
+		Data::Dumper::Dumper($string);
+	};
+
+	# Trim off the trailing space it will add.
+	$code =~ s/\s+\z//;
+	return $code;
 }
 
 sub indent {
