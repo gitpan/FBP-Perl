@@ -61,6 +61,22 @@ sub new {
 		Wx::wxLI_HORIZONTAL | Wx::wxNO_BORDER,
 	);
 
+	$self->{m_splitter1} = Wx::SplitterWindow->new(
+		$self,
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxSP_3D,
+	);
+
+	$self->{m_panel3} = Wx::Panel->new(
+		$self,
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxTAB_TRAVERSAL,
+	);
+
 	$self->{m_choice1} = Wx::Choice->new(
 		$self,
 		-1,
@@ -123,6 +139,14 @@ sub new {
 		},
 	);
 
+	$self->{m_panel4} = Wx::Panel->new(
+		$self,
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxTAB_TRAVERSAL,
+	);
+
 	$self->{m_htmlWin1} = Wx::HtmlWindow->new(
 		$self,
 		-1,
@@ -163,6 +187,44 @@ sub new {
 		Wx::wxDefaultSize,
 	);
 
+	$self->{m_listbook1} = Wx::Listbook->new(
+		$self,
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxLB_DEFAULT,
+	);
+
+	$self->{m_panel1} = Wx::Panel->new(
+		$self,
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxTAB_TRAVERSAL,
+	);
+
+	$self->{m_staticText2} = Wx::StaticText->new(
+		$self,
+		-1,
+		Wx::gettext("This is a test"),
+	);
+
+	$self->{m_panel2} = Wx::Panel->new(
+		$self,
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxTAB_TRAVERSAL,
+	);
+
+	$self->{m_textCtrl2} = Wx::TextCtrl->new(
+		$self,
+		-1,
+		"This is a test",
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+	);
+
 	my $fgSizer1 = Wx::FlexGridSizer->new( 1, 2, 3, 4 );
 	$fgSizer1->AddGrowableCol( 0 );
 	$fgSizer1->AddGrowableCol( 1 );
@@ -172,6 +234,10 @@ sub new {
 	$fgSizer1->Add( $self->{m_comboBox1}, 0, Wx::wxALL | Wx::wxEXPAND, 5 );
 	$fgSizer1->Add( $self->{m_listBox1}, 0, Wx::wxALL, 5 );
 	$fgSizer1->Add( $self->{m_listCtrl1}, 0, Wx::wxALL | Wx::wxEXPAND, 5 );
+
+	$self->{m_panel3}->SetSizer($fgSizer1);
+	$self->{m_panel3}->Layout;
+	$fgSizer1->Fit($self->{m_panel3});
 
 	my $sbSizer1 = Wx::StaticBoxSizer->new(
 		Wx::StaticBox->new(
@@ -183,11 +249,23 @@ sub new {
 	);
 	$sbSizer1->Add( $self->{m_htmlWin1}, 0, Wx::wxALL | Wx::wxEXPAND, 5 );
 
+	$self->{m_panel4}->SetSizer($sbSizer1);
+	$self->{m_panel4}->Layout;
+	$sbSizer1->Fit($self->{m_panel4});
+
+	$self->{m_splitter1}->SplitVertically(
+		$self->{m_panel3},
+		$self->{m_panel4},
+	);
+
 	my $gSizer1 = Wx::GridSizer->new( 1, 2, 3, 4 );
 	$gSizer1->Add( $self->{m_checkBox1}, 0, Wx::wxALL, 5 );
 	$gSizer1->Add( $self->{m_checkBox2}, 0, Wx::wxALL, 5 );
 	$gSizer1->Add( $self->{m_checkBox3}, 0, Wx::wxALL, 5 );
 	$gSizer1->Add( $self->{m_checkBox4}, 0, Wx::wxALL, 5 );
+
+	$self->{m_listbook1}->AddPage( $self->{m_panel1}, Wx::gettext("Page One"), 1 );
+	$self->{m_listbook1}->AddPage( $self->{m_panel2}, Wx::gettext("Page Two"), 0 );
 
 	my $bSizer2 = Wx::BoxSizer->new( Wx::wxVERTICAL );
 	$bSizer2->Add( $self->{m_staticText1}, 0, Wx::wxALL, 5 );
@@ -195,9 +273,9 @@ sub new {
 	$bSizer2->Add( $self->{m_textCtrl1}, 0, Wx::wxALL, 5 );
 	$bSizer2->Add( $self->{m_button1}, 0, Wx::wxALL, 5 );
 	$bSizer2->Add( $self->{m_staticline1}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
-	$bSizer2->Add( $fgSizer1, 1, Wx::wxEXPAND, 5 );
-	$bSizer2->Add( $sbSizer1, 1, Wx::wxEXPAND, 5 );
+	$bSizer2->Add( $self->{m_splitter1}, 1, Wx::wxEXPAND, 5 );
 	$bSizer2->Add( $gSizer1, 0, Wx::wxEXPAND, 5 );
+	$bSizer2->Add( $self->{m_listbook1}, 1, Wx::wxEXPAND | Wx::wxALL, 5 );
 
 	my $bSizer1 = Wx::BoxSizer->new( Wx::wxHORIZONTAL );
 	$bSizer1->Add( $bSizer2, 1, Wx::wxEXPAND, 5 );

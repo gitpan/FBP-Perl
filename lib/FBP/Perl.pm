@@ -22,10 +22,10 @@ use 5.008005;
 use strict;
 use warnings;
 use Mouse         0.61;
-use FBP           0.16 ();
+use FBP           0.18 ();
 use Data::Dumper 2.122 ();
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 has project => (
 	is       => 'ro',
@@ -109,7 +109,7 @@ sub dialog_new {
 		$super,
 		"",
 		@windows,
-		@sizers,
+		( map { @$_, "" } @sizers ),
 		"return \$self;",
 		"}",
 	);
@@ -148,32 +148,32 @@ sub dialog_windows {
 }
 
 sub dialog_sizers {
-	my $self   = shift;
-	my $dialog = shift;
+	my $self     = shift;
+	my $dialog   = shift;
+	my $sizer    = $dialog->children->[0];
+	my $variable = $self->object_variable($sizer);
 
-	# Check the root sizer
-	my $sizer = $dialog->children->[0];
-	unless ( $sizer->isa('FBP::BoxSizer') ) {
+	# Check the sizer within the dialog
+	unless ( $sizer->isa('FBP::Sizer') ) {
 		die 'Dialog root sizer is not a BoxSizer';
 	}
 
 	# Generate fragments
-	my $variable = $self->object_variable($sizer);
-	my $boxsizer = $self->boxsizer_create($sizer);
+	my @children = $self->sizer_pack($sizer);
 
-	return [
-		@$boxsizer,
-		"",
-		"\$self->SetSizer($variable);",
-		"\$self->Layout;",
-		"$variable->Fit(\$self);",
-		(
-			$dialog->style =~ /\bwxRESIZE_BORDER\b/
-			? "$variable->SetSizeHints(\$self);"
-			: ()
-		),
-		"",
-	];
+	return (
+		@children,
+		[
+			"\$self->SetSizer($variable);",
+			"\$self->Layout;",
+			"$variable->Fit(\$self);",
+			(
+				$dialog->style =~ /\bwxRESIZE_BORDER\b/
+				? "$variable->SetSizeHints(\$self);"
+				: ()
+			),
+		]
+	);
 }
 
 sub dialog_version {
@@ -215,10 +215,16 @@ sub window_create {
 		$lines = $self->combobox_create($window);
 	} elsif ( $window->isa('FBP::HtmlWindow') ) {
 		$lines = $self->htmlwindow_create($window);
+	} elsif ( $window->isa('FBP::Listbook') ) {
+		$lines = $self->listbook_create($window);
 	} elsif ( $window->isa('FBP::ListBox') ) {
 		$lines = $self->listbox_create($window);
 	} elsif ( $window->isa('FBP::ListCtrl') ) {
 		$lines = $self->listctrl_create($window);
+	} elsif ( $window->isa('FBP::Panel') ) {
+		$lines = $self->panel_create($window);
+	} elsif ( $window->isa('FBP::SplitterWindow') ) {
+		$lines = $self->splitterwindow_create($window);
 	} elsif ( $window->isa('FBP::StaticLine') ) {
 		$lines = $self->staticline_create($window);
 	} elsif ( $window->isa('FBP::StaticText') ) {
@@ -343,6 +349,25 @@ sub htmlwindow_create {
 	);
 }
 
+sub listbook_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $id       = $self->wx( $control->id );
+	my $position = $self->object_position($control);
+	my $size     = $self->object_size($control);
+	my $style    = $self->wx( $control->styles );
+
+	return $self->nested(
+		$self->window_new($control),
+		"\$self,",
+		"$id,",
+		"$position,",
+		"$size,",
+		( $style ? "$style," : () ),
+		");",
+	);
+}
+
 sub listbox_create {
 	my $self     = shift;
 	my $control  = shift;
@@ -370,10 +395,48 @@ sub listctrl_create {
 	my $id       = $self->wx( $control->id );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_size($control);
-	my $style    = $self->wx( $control->styles );	
+	my $style    = $self->wx( $control->styles );
 
 	return $self->nested(
 		$self->window_new($control),
+		"\$self,",
+		"$id,",
+		"$position,",
+		"$size,",
+		( $style ? "$style," : () ),
+		");",
+	);
+}
+
+sub panel_create {
+	my $self     = shift;
+	my $window   = shift;
+	my $id       = $self->wx( $window->id );
+	my $position = $self->object_position($window);
+	my $size     = $self->object_size($window);
+	my $style    = $self->wx( $window->styles );
+
+	return $self->nested(
+		$self->window_new($window),
+		"\$self,",
+		"$id,",
+		"$position,",
+		"$size,",
+		( $style ? "$style," : () ),
+		");",
+	);
+}
+
+sub splitterwindow_create {
+	my $self    = shift;
+	my $window  = shift;
+	my $id       = $self->wx( $window->id );
+	my $position = $self->object_position($window);
+	my $size     = $self->object_size($window);
+	my $style    = $self->wx( $window->styles );
+
+	return $self->nested(
+		$self->window_new($window),
 		"\$self,",
 		"$id,",
 		"$position,",
@@ -452,42 +515,62 @@ sub textctrl_create {
 ######################################################################
 # Sizer Generators
 
-sub sizer_create {
+sub children_pack {
+	my $self     = shift;
+	my $object   = shift;
+	my @children = ();
+
+	foreach my $item ( @{$object->children} ) {
+		my $child = $item->children->[0];
+		if ( $child->isa('FBP::Sizer') ) {
+			push @children, $self->sizer_pack($child);
+		} elsif ( $child->isa('FBP::Listbook') ) {
+			push @children, $self->listbook_pack($child);
+		} elsif ( $child->isa('FBP::Panel') ) {
+			push @children, $self->panel_pack($child);
+		} elsif ( $child->isa('FBP::SplitterWindow') ) {
+			push @children, $self->splitterwindow_pack($child);
+		} elsif ( $child->does('FBP::Children') ) {
+			if ( @{$child->children} ) {
+				die "Unsupported parent " . ref($child);
+			}
+		}
+	}
+
+	return @children;
+}
+
+sub sizer_pack {
 	my $self  = shift;
 	my $sizer = shift;
-	if ( $sizer->isa('FBP::FlexGridSizer') ) {
-		return $self->flexgridsizer_create($sizer);
+
+	if ( $sizer->isa('FBP::FlexGridSizer') ) { 
+		return $self->flexgridsizer_pack($sizer);
 	} elsif ( $sizer->isa('FBP::GridSizer') ) {
-		return $self->gridsizer_create($sizer);
+		return $self->gridsizer_pack($sizer);
 	} elsif ( $sizer->isa('FBP::StaticBoxSizer') ) {
-		return $self->staticboxsizer_create($sizer);
+		return $self->staticboxsizer_pack($sizer);
 	} elsif ( $sizer->isa('FBP::BoxSizer') ) {
-		return $self->boxsizer_create($sizer);
+		return $self->boxsizer_pack($sizer);
 	} else {
-		die "Cannot create constructor code for " . ref($sizer);
+		die "Unsupported sizer " . ref($sizer);
 	}
 }
 
-sub boxsizer_create {
+sub boxsizer_pack {
 	my $self     = shift;
 	my $sizer    = shift;
 	my $lexical  = $self->object_lexical($sizer) ? 'my ' : '';
 	my $variable = $self->object_variable($sizer);
 	my $orient   = $self->wx( $sizer->orient );
 
-	# Add the content for child sizers
-	my @lines = map {
-		( @$_, "" )
-	} map {
-		$self->sizer_create($_)
-	} grep {
-		$_->isa('FBP::Sizer')
-	} map {
-		$_->children->[0]
-	} @{$sizer->children};
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($sizer);
 
 	# Add the content for this sizer
-	push @lines, "$lexical$variable = Wx::BoxSizer->new( $orient );";
+	my @lines = (
+		"$lexical$variable = Wx::BoxSizer->new( $orient );",
+	);
 	foreach my $item ( @{$sizer->children} ) {
 		my $child  = $item->children->[0];
 		if ( $child->isa('FBP::Spacer') ) {
@@ -512,10 +595,10 @@ sub boxsizer_create {
 		}
 	}
 
-	return \@lines;
+	return ( @children, \@lines );
 }
 
-sub staticboxsizer_create {
+sub staticboxsizer_pack {
 	my $self     = shift;
 	my $sizer    = shift;
 	my $lexical  = $self->object_lexical($sizer) ? 'my ' : '';
@@ -523,26 +606,20 @@ sub staticboxsizer_create {
 	my $label    = $self->object_label($sizer);
 	my $orient   = $self->wx( $sizer->orient );
 
-	# Add the content for child sizers
-	my @lines = map {
-		( @$_, "" )
-	} map {
-		$self->sizer_create($_)
-	} grep {
-		$_->isa('FBP::Sizer')
-	} map {
-		$_->children->[0]
-	} @{$sizer->children};
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($sizer);
 
 	# Add the content for this sizer
-	push @lines, "$lexical$variable = Wx::StaticBoxSizer->new(";
-	push @lines, "\tWx::StaticBox->new(";
-	push @lines, "\t\t\$self,";
-	push @lines, "\t\t-1,";
-	push @lines, "\t\t$label,";
-	push @lines, "\t),";
-	push @lines, "\t$orient,";
-	push @lines, ");";
+	my @lines = (
+		"$lexical$variable = Wx::StaticBoxSizer->new(",
+		"\tWx::StaticBox->new(",
+		"\t\t\$self,",
+		"\t\t-1,",
+		"\t\t$label,",
+		"\t),",
+		"\t$orient,",
+		");",
+	);
 	foreach my $item ( @{$sizer->children} ) {
 		my $child  = $item->children->[0];
 		if ( $child->isa('FBP::Spacer') ) {
@@ -567,10 +644,10 @@ sub staticboxsizer_create {
 		}
 	}
 
-	return \@lines;
+	return ( @children, \@lines );
 }
 
-sub gridsizer_create {
+sub gridsizer_pack {
 	my $self     = shift;
 	my $sizer    = shift;
 	my $lexical  = $self->object_lexical($sizer) ? 'my ' : '';
@@ -582,19 +659,13 @@ sub gridsizer_create {
 		$sizer->hgap,
 	);
 
-	# Add the content for child sizers
-	my @lines = map {
-		( @$_, "" )
-	} map {
-		$self->sizer_create($_)
-	} grep {
-		$_->isa('FBP::Sizer')
-	} map {
-		$_->children->[0]
-	} @{$sizer->children};
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($sizer);
 
 	# Add the content for this sizer
-	push @lines, "$lexical$variable = Wx::GridSizer->new( $params );";
+	my @lines = (
+		"$lexical$variable = Wx::GridSizer->new( $params );",
+	);
 	foreach my $item ( @{$sizer->children} ) {
 		my $child  = $item->children->[0];
 		if ( $child->isa('FBP::Spacer') ) {
@@ -619,10 +690,10 @@ sub gridsizer_create {
 		}
 	}
 
-	return \@lines;
+	return ( @children, \@lines );
 }
 
-sub flexgridsizer_create {
+sub flexgridsizer_pack {
 	my $self      = shift;
 	my $sizer     = shift;
 	my $lexical   = $self->object_lexical($sizer) ? 'my ' : '';
@@ -636,19 +707,13 @@ sub flexgridsizer_create {
 		$sizer->hgap,
 	);
 
-	# Add the content for child sizers
-	my @lines = map {
-		( @$_, "" )
-	} map {
-		$self->sizer_create($_)
-	} grep {
-		$_->isa('FBP::Sizer')
-	} map {
-		$_->children->[0]
-	} @{$sizer->children};
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($sizer);
 
 	# Add the content for this sizer
-	push @lines, "$lexical$variable = Wx::FlexGridSizer->new( $params );";
+	my @lines = (
+		"$lexical$variable = Wx::FlexGridSizer->new( $params );",
+	);
 	foreach my $row ( split /,/, $sizer->growablerows ) {
 		push @lines, "$variable->AddGrowableRow( $row );";
 	}
@@ -681,7 +746,99 @@ sub flexgridsizer_create {
 		}
 	}
 
+	return ( @children, \@lines );
+}
+
+sub listbook_pack {
+	my $self     = shift;
+	my $book     = shift;
+	my $variable = $self->object_variable($book);
+
+	# Add each of our child pages
+	my @lines = ();
+	foreach my $item ( @{$book->children} ) {
+		my $child = $item->children->[0];
+		if ( $child->isa('FBP::Panel') ) {
+			my $params = join(
+				', ',
+				$self->object_variable($child),
+				$self->object_label($item),
+				$item->select ? 1 : 0,
+			);
+			push @lines, "$variable->AddPage( $params );";
+
+		} else {
+			die "Unknown or unsupported book child " . ref($child);
+		}
+	}
+
 	return \@lines;
+}
+
+sub panel_pack {
+	my $self     = shift;
+	my $panel    = shift;
+	my $sizer    = $panel->children->[0];
+	my $variable = $self->object_variable($panel);
+	my $sizervar = $self->object_variable($sizer);
+
+	# Generate fragments for our child sizer
+	my @children = $self->sizer_pack($sizer);
+
+	# Attach the sizer to the panel
+	return (
+		@children,
+		[
+			"$variable->SetSizer($sizervar);",
+			"$variable->Layout;",
+			"$sizervar->Fit($variable);",
+		]
+	);
+}
+
+sub splitterwindow_pack {
+	my $self     = shift;
+	my $window   = shift;
+	my $variable = $self->object_variable($window);
+	my @windows  = map { $_->children->[0] } @{$window->children};
+
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($window);
+
+	if ( @windows == 1 ) {
+		# One child window
+		my $window1 = $self->object_variable($windows[0]);
+		return (
+			@children,
+			[
+				"$variable->Initialize(",
+				"\t$window1,",
+				");",
+			],
+		);
+	}
+
+	if ( @windows == 2 ) {
+		# Two child windows
+		my $sashpos = $window->sashpos;
+		my $window1 = $self->object_variable($windows[0]);
+		my $window2 = $self->object_variable($windows[1]);
+		my $method  = $window->splitmode eq 'wxVERTICAL'
+		            ? 'SplitHorizontally'
+		            : 'SplitVertically';
+		return (
+			@children,
+			[
+				"$variable->$method(",
+				"\t$window1,",
+				"\t$window2,",
+				$sashpos ? ( "\t$sashpos," ) : (),
+				");",
+			],
+		);
+	}
+
+	die "Unexpected number of splitterwindow children";
 }
 
 
@@ -877,6 +1034,9 @@ my %OBJECT_UNLEXICAL = (
 );
 
 sub object_lexical {
+	unless ( $_[1] and $_[1]->can('permission') ) {
+		$DB::single = 1;
+	}
 	$_[1]->permission !~ /^(?:protected|public)\z/;
 }
 
