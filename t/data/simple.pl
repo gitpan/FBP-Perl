@@ -36,9 +36,9 @@ sub new {
 		Wx::wxDefaultSize,
 		Wx::wxTE_CENTRE,
 	);
-	$self->{m_textCtrl1}->SetMaxLength( 50 );
+	$self->{m_textCtrl1}->SetMaxLength(50);
 	$self->{m_textCtrl1}->SetBackgroundColour(
-		Wx::Colour->new(255, 128, 0)
+		Wx::Colour->new( 255, 128, 0 )
 	);
 
 	$self->{m_button1} = Wx::Button->new(
@@ -87,7 +87,7 @@ sub new {
 		-1,
 		Wx::wxDefaultPosition,
 		Wx::wxDefaultSize,
-		[ ],
+		[],
 	);
 	$self->{m_choice1}->SetSelection(0);
 
@@ -110,7 +110,7 @@ sub new {
 		-1,
 		Wx::wxDefaultPosition,
 		Wx::wxDefaultSize,
-		[ ],
+		[],
 	);
 
 	$self->{m_listCtrl1} = Wx::ListCtrl->new(
@@ -215,7 +215,7 @@ sub new {
 		Wx::gettext("This is a test"),
 	);
 	$self->{m_staticText2}->SetForegroundColour(
-		Wx::Colour->new(0, 0, 255)
+		Wx::Colour->new( 0, 0, 255 )
 	);
 
 	$self->{m_spinCtrl1} = Wx::SpinCtrl->new(
@@ -249,7 +249,7 @@ sub new {
 	$self->{m_colourPicker1} = Wx::ColourPickerCtrl->new(
 		$self->{m_panel2},
 		-1,
-		Wx::Colour->new(255, 0, 0),
+		Wx::Colour->new( 255, 0, 0 ),
 		Wx::wxDefaultPosition,
 		Wx::wxDefaultSize,
 		Wx::wxCLRP_DEFAULT_STYLE,
@@ -304,10 +304,10 @@ sub new {
 	);
 
 	my $fgSizer1 = Wx::FlexGridSizer->new( 1, 2, 3, 4 );
-	$fgSizer1->AddGrowableCol( 0 );
-	$fgSizer1->AddGrowableCol( 1 );
-	$fgSizer1->SetFlexibleDirection( Wx::wxBOTH );
-	$fgSizer1->SetNonFlexibleGrowMode( Wx::wxFLEX_GROWMODE_SPECIFIED );
+	$fgSizer1->AddGrowableCol(0);
+	$fgSizer1->AddGrowableCol(1);
+	$fgSizer1->SetFlexibleDirection(Wx::wxBOTH);
+	$fgSizer1->SetNonFlexibleGrowMode(Wx::wxFLEX_GROWMODE_SPECIFIED);
 	$fgSizer1->Add( $self->{m_choice1}, 0, Wx::wxALL, 5 );
 	$fgSizer1->Add( $self->{m_comboBox1}, 0, Wx::wxALL | Wx::wxEXPAND, 5 );
 	$fgSizer1->Add( $self->{m_listBox1}, 0, Wx::wxALL, 5 );
@@ -342,7 +342,7 @@ sub new {
 	$gSizer1->Add( $self->{m_checkBox3}, 0, Wx::wxALL, 5 );
 	$gSizer1->Add( $self->{m_checkBox4}, 0, Wx::wxALL, 5 );
 
-	my $bSizer3 = Wx::BoxSizer->new( Wx::wxVERTICAL );
+	my $bSizer3 = Wx::BoxSizer->new(Wx::wxVERTICAL);
 	$bSizer3->Add( $self->{m_staticText2}, 0, Wx::wxALL, 5 );
 	$bSizer3->Add( $self->{m_spinCtrl1}, 0, Wx::wxALL, 5 );
 
@@ -350,7 +350,7 @@ sub new {
 	$self->{m_panel1}->Layout;
 	$bSizer3->Fit($self->{m_panel1});
 
-	my $bSizer4 = Wx::BoxSizer->new( Wx::wxVERTICAL );
+	my $bSizer4 = Wx::BoxSizer->new(Wx::wxVERTICAL);
 	$bSizer4->Add( $self->{m_textCtrl2}, 0, Wx::wxALL, 5 );
 	$bSizer4->Add( $self->{m_colourPicker1}, 0, Wx::wxALL, 5 );
 	$bSizer4->Add( $self->{m_colourPicker2}, 0, Wx::wxALL, 5 );
@@ -366,7 +366,7 @@ sub new {
 	$self->{m_listbook1}->AddPage( $self->{m_panel2}, Wx::gettext("Page Two"), 0 );
 	$self->{m_listbook1}->AddPage( $self->{m_panel5}, Wx::gettext("Page Three"), 0 );
 
-	my $bSizer2 = Wx::BoxSizer->new( Wx::wxVERTICAL );
+	my $bSizer2 = Wx::BoxSizer->new(Wx::wxVERTICAL);
 	$bSizer2->Add( $self->{m_staticText1}, 0, Wx::wxALL, 5 );
 	$bSizer2->Add( 10, 5, 0, Wx::wxEXPAND, 5 );
 	$bSizer2->Add( $self->{m_textCtrl1}, 0, Wx::wxALL, 5 );
@@ -376,7 +376,7 @@ sub new {
 	$bSizer2->Add( $gSizer1, 0, Wx::wxEXPAND, 5 );
 	$bSizer2->Add( $self->{m_listbook1}, 1, Wx::wxEXPAND | Wx::wxALL, 5 );
 
-	my $bSizer1 = Wx::BoxSizer->new( Wx::wxHORIZONTAL );
+	my $bSizer1 = Wx::BoxSizer->new(Wx::wxHORIZONTAL);
 	$bSizer1->Add( $bSizer2, 1, Wx::wxEXPAND, 5 );
 
 	$self->SetSizer($bSizer1);
