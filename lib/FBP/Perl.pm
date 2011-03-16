@@ -25,7 +25,7 @@ use Mouse         0.61;
 use FBP           0.18 ();
 use Data::Dumper 2.122 ();
 
-our $VERSION = '0.22';
+our $VERSION = '0.23';
 
 has project => (
 	is       => 'ro',
@@ -1232,22 +1232,20 @@ sub dialog_methods {
 		foreach my $event ( sort keys %EVENT ) {
 			next unless $window->can($event);
 
-			my $name = $window->$event();
-			next unless defined $name;
-			next unless length $name;
+			my $name   = $window->name;
+			my $method = $window->$event();
+			next unless defined $method;
+			next unless length $method;
 
 			# Protect against duplicates
-			if ( $seen{$name}++ ) {
-				die "Duplicate method '$name' detected";
+			if ( $seen{$method}++ ) {
+				die "Duplicate method '$method' detected";
 			}
 
 			push @lines, (
 				"",
-				"sub $name {",
-				"\tmy \$self  = shift;",
-				"\tmy \$event = shift;",
-				"",
-				"\tdie 'EVENT HANDLER NOT IMPLEMENTED';",
+				"sub $method {",
+				"\tdie 'Handler method $method for event $name.$event not implemented';",
 				"}",
 			);
 		}
