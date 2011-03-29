@@ -19,6 +19,7 @@ t/02_simple.t
 t/data/padre.fbp
 t/data/simple.fbp
 t/data/simple.pl
+t/lib/Custom.pm
 t/lib/MyClass.pm
 xt/meta.t
 xt/pmv.t
