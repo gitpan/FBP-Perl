@@ -55,7 +55,7 @@ use warnings;
 use FBP           0.31 ();
 use Data::Dumper 2.122 ();
 
-our $VERSION = '0.43';
+our $VERSION = '0.44';
 
 # Event Binding Table
 my %EVENT = (
@@ -405,12 +405,17 @@ sub form_new {
 	my $super   = $self->form_super($form);
 	my @windows = $self->children_create($form);
 	my @sizers  = $self->form_sizers($form);
+	my $status  = $form->find_first( isa => 'FBP::StatusBar' );
 
-	my @hints = ();
+	my @set = ();
 	if ( $self->form_setsizehints($form) ) {
 		my $minsize = $self->wxsize($form->minimum_size);
 		my $maxsize = $self->wxsize($form->maximum_size);
-		push @hints, "\$self->SetSizeHints( $minsize, $maxsize );";
+		push @set, "\$self->SetSizeHints( $minsize, $maxsize );";
+	}
+	if ( $status ) {
+		my $statusbar = $self->statusbar_create($status, $form);
+		push @set, @$statusbar;
 	}
 
 	return $self->nested(
@@ -419,7 +424,7 @@ sub form_new {
 		"my \$parent = shift;",
 		"",
 		$super,
-		@hints,
+		@set,
 		"",
 		( map { @$_, "" } @windows ),
 		( map { @$_, "" } @sizers  ),
@@ -503,15 +508,8 @@ sub panel_super {
 sub form_sizers {
 	my $self     = shift;
 	my $form     = shift;
-	my $sizer    = $form->children->[0];
+	my $sizer    = $self->form_rootsizer($form);
 	my $variable = $self->object_variable($sizer);
-
-	# Check the sizer within the dialog
-	unless ( $sizer->isa('FBP::Sizer') ) {
-		die 'Dialog root sizer is not a BoxSizer';
-	}
-
-	# Generate fragments
 	my @children = $self->sizer_pack($sizer);
 
 	return (
@@ -531,6 +529,19 @@ sub form_sizers {
 			),
 		]
 	);
+}
+
+sub form_rootsizer {
+	my $self   = shift;
+	my $form   = shift;
+	my @sizers = grep { $_->isa('FBP::Sizer') } @{$form->children};
+	unless ( @sizers ) {
+		die "Form does not contain any sizers";
+	}
+	unless ( @sizers == 1 ) {
+		die "Form contains more than one root sizer";
+	}
+	return $sizers[0];
 }
 
 sub form_setsizehints {
@@ -619,6 +630,9 @@ sub children_create {
 	my @windows = ();
 
 	foreach my $child ( @{$object->children} ) {
+		# Skip elements we create outside the main recursion
+		next if $child->isa('FBP::StatusBar');
+
 		if ( $child->isa('FBP::Window') ) {
 			push @windows, $self->window_create($child, $parent);
 		}
@@ -676,6 +690,8 @@ sub window_create {
 		$lines = $self->listbox_create($window, $parent);
 	} elsif ( $window->isa('FBP::ListCtrl') ) {
 		$lines = $self->listctrl_create($window, $parent);
+	} elsif ( $window->isa('FBP::MenuBar') ) {
+		$lines = $self->menubar_create($window, $parent);
 	} elsif ( $window->isa('FBP::Panel') ) {
 		$lines = $self->panel_create($window, $parent);
 	} elsif ( $window->isa('FBP::RadioBox') ) {
@@ -1079,6 +1095,106 @@ sub listctrl_create {
 	);
 }
 
+sub menu_create {
+	my $self     = shift;
+	my $menu     = shift;
+	my $lexical  = $self->object_lexical($menu) ? 'my ' : '';
+	my $variable = $self->object_variable($menu);
+
+	# Generate our children
+	my @lines = (
+		"$lexical$variable = Wx::Menu->new;",
+		"",
+	);
+	foreach my $child ( @{$menu->children} ) {
+		if ( $child->isa('FBP::Menu') ) {
+			push @lines, @{ $self->menu_create($child, $menu) };
+
+		} elsif ( $child->isa('FBP::MenuItem') ) {
+			push @lines, @{ $self->menuitem_create($child, $menu) };
+
+		} else {
+			next;
+		}
+		push @lines, "";
+	}
+
+	# Fill the menu
+	foreach my $child ( @{$menu->children} ) {
+		if ( $child->isa('FBP::Menu') ) {
+			push @lines, $self->nested(
+				"$variable->Append(",
+				$self->object_variable($_) . ',',
+				$self->object_label($_) . ',',
+				");",
+			);
+		} elsif ( $child->isa('FBP::MenuItem') ) {
+			push @lines, "$variable->Append( "
+				. $self->object_variable($child)
+				. " );";
+		} elsif ( $child->isa('FBP::MenuSeparator') ) {
+			push @lines, "$variable->AppendSeparator;";
+		}
+	}
+
+	return \@lines;
+}
+
+sub menubar_create {
+	my $self     = shift;
+	my $window   = shift;
+	my $parent   = $self->object_parent(@_);
+	my $lexical  = $self->object_lexical($window) ? 'my ' : '';
+	my $variable = $self->object_variable($window);
+	my $style    = $self->wx($window->styles || 0);
+
+	# Generate our children
+	my @children = map {
+		$self->menu_create($_, $self)
+	} @{$window->children};
+
+	# Build the append list
+	my @append = map {
+		$self->nested(
+			"$variable->Append(",
+			$self->object_variable($_) . ',',
+			$self->object_label($_) . ',',
+			");",
+		)
+	} @{$window->children};
+ 
+	return [
+		( map { @$_, "" } @children ),
+		"$lexical$variable = Wx::MenuBar->new($style);",
+		"",
+		@append,
+		"",
+		"$parent->SetMenuBar( $variable );",
+	];
+}
+
+sub menuitem_create {
+	my $self     = shift;
+	my $menu     = shift;
+	my $parent   = $self->object_parent(@_);
+	my $lexical  = $self->object_lexical($menu) ? 'my ' : '';
+	my $variable = $self->object_variable($menu);
+	my $id       = $self->wx( $menu->id );
+	my $label    = $self->object_label($menu);
+	my $help     = $self->text( $menu->help );
+	my $kind     = $self->wx( $menu->kind );
+
+	return $self->nested(
+		"$lexical$variable = Wx::MenuItem->new(",
+		"$parent,",
+		"$id,",
+		"$label,",
+		"$help,",
+		"$kind,",
+		");",
+	);
+}
+
 sub panel_create {
 	my $self     = shift;
 	my $window   = shift;
@@ -1265,6 +1381,7 @@ sub statusbar_create {
 	my $variable = $self->object_variable($object);
 	my $parent   = $self->object_parent(@_);
 	my $fields   = $object->fields;
+	my $style    = $self->window_style($object, 0);
 	my $id       = $self->wx( $object->id );
 
 	# If the status bar is not stored for later reference,
@@ -1275,13 +1392,9 @@ sub statusbar_create {
 		$variable = "$variable = ";
 	}
 
-	return $self->nested(
-		"$variable$parent->CreateStatusBar(",
-		"$fields,",
-		$self->window_style($object, 0),
-		"$id,",
-		");",
-	);
+	return [
+		"$variable$parent->CreateStatusBar( $fields, $style $id );",
+	];
 }
 
 sub textctrl_create {
