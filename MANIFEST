@@ -21,6 +21,7 @@ t/04_panel.t
 t/05_project.t
 t/data/dialog.pl
 t/data/frame.pl
+t/data/padre-plugin.png
 t/data/panel.pl
 t/data/project.pl
 t/data/simple.fbp
