@@ -36,6 +36,14 @@ sub new {
 		Wx::gettext("Who is awesome")
 	);
 
+	$self->{m_bitmap1} = Wx::StaticBitmap->new(
+		$self,
+		-1,
+		Wx::Bitmap->new( "padre-plugin.png", Wx::wxBITMAP_TYPE_ANY ),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+	);
+
 	$self->{m_textCtrl1} = Wx::TextCtrl->new(
 		$self,
 		-1,
@@ -61,6 +69,8 @@ sub new {
 		$self,
 		-1,
 		Wx::gettext("MyButton"),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
 	);
 	$self->{m_button1}->SetDefault;
 	$self->{m_button1}->SetToolTip(
@@ -73,6 +83,40 @@ sub new {
 		sub {
 			shift->m_button1(@_);
 		},
+	);
+
+	$self->{m_toggleBtn1} = Wx::ToggleButton->new(
+		$self,
+		-1,
+		Wx::gettext("Toggle me!"),
+		Wx::wxDefaultPosition,
+		[ 100, -1 ],
+		Wx::wxFULL_REPAINT_ON_RESIZE,
+	);
+	$self->{m_toggleBtn1}->SetValue(1);
+	$self->{m_toggleBtn1}->SetToolTip(
+		Wx::gettext("Toggle something")
+	);
+
+	$self->{m_bpButton1} = Wx::BitmapButton->new(
+		$self,
+		-1,
+		Wx::Bitmap->new( "padre-plugin.png", Wx::wxBITMAP_TYPE_ANY ),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxBU_AUTODRAW,
+	);
+	$self->{m_bpButton1}->SetBitmapDisabled(
+		Wx::Bitmap->new( "padre-plugin.png", Wx::wxBITMAP_TYPE_ANY )
+	);
+	$self->{m_bpButton1}->SetBitmapSelected(
+		Wx::Bitmap->new( "padre-plugin.png", Wx::wxBITMAP_TYPE_ANY )
+	);
+	$self->{m_bpButton1}->SetBitmapHover(
+		Wx::Bitmap->new( "padre-plugin.png", Wx::wxBITMAP_TYPE_ANY )
+	);
+	$self->{m_bpButton1}->SetBitmapFocus(
+		Wx::Bitmap->new( "padre-plugin.png", Wx::wxBITMAP_TYPE_ANY )
 	);
 
 	$self->{m_staticline1} = Wx::StaticLine->new(
@@ -194,8 +238,17 @@ sub new {
 		Wx::wxTAB_TRAVERSAL,
 	);
 
-	$self->{m_htmlWin1} = Wx::HtmlWindow->new(
+	$self->{m_scrolledWindow1} = Wx::ScrolledWindow->new(
 		$self->{m_panel4},
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxHSCROLL | Wx::wxVSCROLL,
+	);
+	$self->{m_scrolledWindow1}->SetScrollRate( 5, 5 );
+
+	$self->{m_htmlWin1} = Wx::HtmlWindow->new(
+		$self->{m_scrolledWindow1},
 		-1,
 		Wx::wxDefaultPosition,
 		[ 200, 200 ],
@@ -274,7 +327,7 @@ sub new {
 	$self->{m_radioBox1} = Wx::RadioBox->new(
 		$self->{m_panel1},
 		-1,
-		"Radio Gaga",
+		Wx::gettext("Radio Gaga"),
 		Wx::wxDefaultPosition,
 		Wx::wxDefaultSize,
 		[
@@ -294,6 +347,17 @@ sub new {
 		sub {
 			shift->on_radio_box(@_);
 		},
+	);
+
+	$self->{m_slider1} = Wx::Slider->new(
+		$self->{m_panel1},
+		-1,
+		50,
+		0,
+		100,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxSL_HORIZONTAL,
 	);
 
 	$self->{m_panel2} = Wx::Panel->new(
@@ -346,7 +410,7 @@ sub new {
 		$self->{m_panel2},
 		-1,
 		"",
-		"Select a file",
+		Wx::gettext("Select a file"),
 		"*.*",
 		Wx::wxDefaultPosition,
 		Wx::wxDefaultSize,
@@ -365,7 +429,7 @@ sub new {
 		$self->{m_panel2},
 		-1,
 		"",
-		"Select a folder",
+		Wx::gettext("Select a folder"),
 		Wx::wxDefaultPosition,
 		Wx::wxDefaultSize,
 		Wx::wxDIRP_DEFAULT_STYLE,
@@ -414,6 +478,8 @@ sub new {
 		$self->{m_panel6},
 		-1,
 		Wx::gettext("MyButton"),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
 	);
 
 	$self->{m_panel7} = Wx::Panel->new(
@@ -452,6 +518,13 @@ sub new {
 	);
 	$self->{m_gauge1}->SetValue(85);
 
+	my $bSizer10 = Wx::BoxSizer->new(Wx::wxHORIZONTAL);
+	$bSizer10->Add( $self->{m_bitmap1}, 0, Wx::wxALL, 5 );
+	$bSizer10->Add( $self->{m_textCtrl1}, 0, Wx::wxALL, 5 );
+	$bSizer10->Add( $self->{m_button1}, 0, Wx::wxALL, 5 );
+	$bSizer10->Add( $self->{m_toggleBtn1}, 0, Wx::wxALL, 5 );
+	$bSizer10->Add( $self->{m_bpButton1}, 0, Wx::wxALL, 5 );
+
 	my $fgSizer1 = Wx::FlexGridSizer->new( 1, 2, 3, 4 );
 	$fgSizer1->AddGrowableCol(0);
 	$fgSizer1->AddGrowableCol(1);
@@ -467,6 +540,13 @@ sub new {
 	$self->{m_panel3}->Layout;
 	$fgSizer1->Fit($self->{m_panel3});
 
+	my $bSizer9 = Wx::BoxSizer->new(Wx::wxVERTICAL);
+	$bSizer9->Add( $self->{m_htmlWin1}, 0, Wx::wxALL | Wx::wxEXPAND, 5 );
+
+	$self->{m_scrolledWindow1}->SetSizer($bSizer9);
+	$self->{m_scrolledWindow1}->Layout;
+	$bSizer9->Fit($self->{m_scrolledWindow1});
+
 	my $sbSizer1 = Wx::StaticBoxSizer->new(
 		Wx::StaticBox->new(
 			$self,
@@ -475,7 +555,7 @@ sub new {
 		),
 		Wx::wxVERTICAL,
 	);
-	$sbSizer1->Add( $self->{m_htmlWin1}, 0, Wx::wxALL | Wx::wxEXPAND, 5 );
+	$sbSizer1->Add( $self->{m_scrolledWindow1}, 1, Wx::wxEXPAND | Wx::wxALL, 5 );
 
 	$self->{m_panel4}->SetSizer($sbSizer1);
 	$self->{m_panel4}->Layout;
@@ -496,6 +576,7 @@ sub new {
 	$bSizer3->Add( $self->{m_staticText2}, 0, Wx::wxALL, 5 );
 	$bSizer3->Add( $self->{m_spinCtrl1}, 0, Wx::wxALL, 5 );
 	$bSizer3->Add( $self->{m_radioBox1}, 0, Wx::wxALL, 5 );
+	$bSizer3->Add( $self->{m_slider1}, 0, Wx::wxALL | Wx::wxEXPAND, 5 );
 
 	$self->{m_panel1}->SetSizer($bSizer3);
 	$self->{m_panel1}->Layout;
@@ -540,13 +621,12 @@ sub new {
 	my $bSizer2 = Wx::BoxSizer->new(Wx::wxVERTICAL);
 	$bSizer2->Add( $self->{m_staticText1}, 0, Wx::wxALL, 5 );
 	$bSizer2->Add( 10, 5, 0, Wx::wxEXPAND, 5 );
-	$bSizer2->Add( $self->{m_textCtrl1}, 0, Wx::wxALL, 5 );
-	$bSizer2->Add( $self->{m_button1}, 0, Wx::wxALL, 5 );
+	$bSizer2->Add( $bSizer10, 0, Wx::wxEXPAND, 5 );
 	$bSizer2->Add( $self->{m_staticline1}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
 	$bSizer2->Add( $self->{m_splitter1}, 1, Wx::wxEXPAND, 5 );
 	$bSizer2->Add( $gSizer1, 0, Wx::wxEXPAND, 5 );
-	$bSizer2->Add( $self->{m_listbook1}, 1, Wx::wxEXPAND | Wx::wxALL, 5 );
-	$bSizer2->Add( $self->{m_listbook2}, 1, Wx::wxEXPAND | Wx::wxALL, 5 );
+	$bSizer2->Add( $self->{m_listbook1}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
+	$bSizer2->Add( $self->{m_listbook2}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
 
 	my $bSizer1 = Wx::BoxSizer->new(Wx::wxHORIZONTAL);
 	$bSizer1->Add( $bSizer2, 1, Wx::wxEXPAND, 5 );

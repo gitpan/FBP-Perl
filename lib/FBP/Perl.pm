@@ -54,9 +54,9 @@ use strict;
 use warnings;
 use Params::Util  1.00 ();
 use Data::Dumper 2.122 ();
-use FBP           0.31 ();
+use FBP           0.33 ();
 
-our $VERSION = '0.47';
+our $VERSION = '0.48';
 
 # Event Binding Table
 my %EVENT = (
@@ -464,8 +464,8 @@ sub form_super {
 
 sub dialog_super {
 	my $self     = shift;
-	my $dialog     = shift;
-	my $id       = $self->wx( $dialog->id );
+	my $dialog   = shift;
+	my $id       = $self->object_id($dialog);
 	my $title    = $self->text( $dialog->title );
 	my $position = $self->object_position($dialog);
 	my $size     = $self->object_wxsize($dialog);
@@ -484,8 +484,8 @@ sub dialog_super {
 
 sub frame_super {
 	my $self     = shift;
-	my $frame     = shift;
-	my $id       = $self->wx( $frame->id );
+	my $frame    = shift;
+	my $id       = $self->object_id($frame);
 	my $title    = $self->text( $frame->title );
 	my $position = $self->object_position($frame);
 	my $size     = $self->object_wxsize($frame);
@@ -504,8 +504,8 @@ sub frame_super {
 
 sub panel_super {
 	my $self     = shift;
-	my $panel     = shift;
-	my $id       = $self->wx( $panel->id );
+	my $panel    = shift;
+	my $id       = $self->object_id($panel);
 	my $position = $self->object_position($panel);
 	my $size     = $self->object_wxsize($panel);
 
@@ -673,7 +673,9 @@ sub window_create {
 	my $parent = shift;
 	my $lines  = undef;
 
-	if ( $window->isa('FBP::Button') ) {
+	if ( $window->isa('FBP::BitmapButton') ) {
+		$lines = $self->bitmapbutton_create($window, $parent);
+	} elsif ( $window->isa('FBP::Button') ) {
 		$lines = $self->button_create($window, $parent);
 	} elsif ( $window->isa('FBP::CheckBox') ) {
 		$lines = $self->checkbox_create($window, $parent);
@@ -714,12 +716,18 @@ sub window_create {
 		$lines = $self->panel_create($window, $parent);
 	} elsif ( $window->isa('FBP::RadioBox') ) {
 		$lines = $self->radiobox_create($window, $parent);
+	} elsif ( $window->isa('FBP::ScrolledWindow') ) {
+		$lines = $self->scrolledwindow_create($window, $parent);
 	} elsif ( $window->isa('FBP::SearchCtrl') ) {
 		$lines = $self->searchctrl_create($window, $parent);
+	} elsif ( $window->isa('FBP::Slider') ) {
+		$lines = $self->slider_create($window, $parent);
 	} elsif ( $window->isa('FBP::SpinCtrl') ) {
 		$lines = $self->spinctrl_create($window, $parent);
 	} elsif ( $window->isa('FBP::SplitterWindow') ) {
 		$lines = $self->splitterwindow_create($window, $parent);
+	} elsif ( $window->isa('FBP::StaticBitmap') ) {
+		$lines = $self->staticbitmap_create($window, $parent);
 	} elsif ( $window->isa('FBP::StaticLine') ) {
 		$lines = $self->staticline_create($window, $parent);
 	} elsif ( $window->isa('FBP::StaticText') ) {
@@ -728,6 +736,8 @@ sub window_create {
 		$lines = $self->statusbar_create($window, $parent);
 	} elsif ( $window->isa('FBP::TextCtrl') ) {
 		$lines = $self->textctrl_create($window, $parent);
+	} elsif ( $window->isa('FBP::ToggleButton') ) {
+		$lines = $self->togglebutton_create($window, $parent);
 	} elsif ( $window->isa('FBP::ToolBar') ) {
 		$lines = $self->toolbar_create($window, $parent);
 	} else {
@@ -749,12 +759,77 @@ sub window_create {
 	return $lines;
 }
 
+sub bitmapbutton_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $bitmap   = $self->object_bitmap($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+	my $variable = $self->object_variable($control);
+	my $disabled = $self->bitmap( $control->disabled );
+	my $selected = $self->bitmap( $control->selected );
+	my $hover    = $self->bitmap( $control->hover    );
+	my $focus    = $self->bitmap( $control->focus    );
+
+	my $lines = $self->nested(
+		$self->window_new($control),
+		"$parent,",
+		"$id,",
+		"$bitmap,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+
+	# Set the optional images
+	my $null = $self->bitmap(undef);
+	if ( $disabled ne $null ) {
+		push @$lines, (
+			"$variable->SetBitmapDisabled(",
+			"\t$disabled",
+			");",
+		);
+	}
+	if ( $selected ne $null ) {
+		push @$lines, (
+			"$variable->SetBitmapSelected(",
+			"\t$selected",
+			");",
+		);
+	}
+	if ( $hover ne $null ) {
+		push @$lines, (
+			"$variable->SetBitmapHover(",
+			"\t$hover",
+			");",
+		);
+	}
+	if ( $focus ne $null ) {
+		push @$lines, (
+			"$variable->SetBitmapFocus(",
+			"\t$focus",
+			");",
+		);
+	}
+
+	if ( $control->default ) {
+		push @$lines, "$variable->SetDefault;";
+	}
+
+	return $lines;
+}
+
 sub button_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $label    = $self->object_label($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
 	my $variable = $self->object_variable($control);
 
 	my $lines = $self->nested(
@@ -762,6 +837,9 @@ sub button_create {
 		"$parent,",
 		"$id,",
 		"$label,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
 		");",
 	);
 
@@ -776,7 +854,7 @@ sub checkbox_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $label    = $self->object_label($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -797,7 +875,7 @@ sub choice_create {
 	my $self      = shift;
 	my $control   = shift;
 	my $parent    = $self->object_parent(@_);
-	my $id        = $self->wx( $control->id );
+	my $id        = $self->object_id($control);
 	my $position  = $self->object_position($control);
 	my $size      = $self->object_wxsize($control);
 	my $items     = $self->control_items($control);
@@ -817,7 +895,7 @@ sub combobox_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $value    = $self->quote( $control->value );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -840,7 +918,7 @@ sub colourpickerctrl_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $colour   = $self->colour( $control->colour );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -868,7 +946,7 @@ sub customcontrol_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 
 	return $self->nested(
 		$self->window_new($control),
@@ -882,9 +960,9 @@ sub dirpickerctrl_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $value    = $self->quote( $control->value );
-	my $message  = $self->quote( $control->message );
+	my $message  = $self->text( $control->message );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -905,9 +983,9 @@ sub filepickerctrl_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $value    = $self->quote( $control->value );
-	my $message  = $self->quote( $control->message );
+	my $message  = $self->text( $control->message );
 	my $wildcard = $self->quote( $control->wildcard );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -931,7 +1009,7 @@ sub fontpickerctrl_create {
 	my $control  = shift;
 	my $variable = $self->object_variable($control);
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $font     = $self->font( $control->value );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -959,7 +1037,7 @@ sub htmlwindow_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -978,7 +1056,7 @@ sub hyperlink_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $label    = $self->object_label($control);
 	my $url      = $self->quote( $control->url );
 	my $position = $self->object_position($control);
@@ -1030,7 +1108,7 @@ sub gauge_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $range    = $control->range;
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -1060,7 +1138,7 @@ sub listbook_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -1079,7 +1157,7 @@ sub listbox_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 	my $items    = $self->control_items($control);
@@ -1100,7 +1178,7 @@ sub listctrl_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -1199,7 +1277,7 @@ sub menuitem_create {
 	my $parent   = $self->object_parent(@_);
 	my $scope    = $self->object_scope($menu);
 	my $variable = $self->object_variable($menu);
-	my $id       = $self->wx( $menu->id );
+	my $id       = $self->object_id($menu);
 	my $label    = $self->object_label($menu);
 	my $help     = $self->text( $menu->help );
 	my $kind     = $self->wx( $menu->kind );
@@ -1225,7 +1303,7 @@ sub panel_create {
 	my $self     = shift;
 	my $window   = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $window->id );
+	my $id       = $self->object_id($window);
 	my $position = $self->object_position($window);
 	my $size     = $self->object_wxsize($window);
 
@@ -1244,8 +1322,8 @@ sub radiobox_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
-	my $label    = $self->quote( $control->label );
+	my $id       = $self->object_id($control);
+	my $label    = $self->object_label($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 	my $items    = $self->control_items($control);
@@ -1265,11 +1343,38 @@ sub radiobox_create {
 	);
 }
 
+sub scrolledwindow_create {
+	my $self     = shift;
+	my $window   = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($window);
+	my $position = $self->object_position($window);
+	my $size     = $self->object_wxsize($window);
+	my $variable = $self->object_variable($window);
+	my $scroll_x = $window->scroll_rate_x;
+	my $scroll_y = $window->scroll_rate_y;
+
+	my $lines = $self->nested(
+		$self->window_new($window),
+		"$parent,",
+		"$id,",
+		"$position,",
+		"$size,",
+		$self->wx('wxHSCROLL|wxVSCROLL,'),
+		");",
+	);
+
+	# Set the scroll rate for the window
+	push @$lines, "$variable->SetScrollRate( $scroll_x, $scroll_y );";
+
+	return $lines;
+}
+
 sub searchctrl_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $value    = $self->quote( $control->value );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -1300,12 +1405,38 @@ sub searchctrl_create {
 	return $lines;
 }
 
+sub slider_create {
+	my $self    = shift;
+	my $window  = shift;
+	my $variable = $self->object_variable($window);
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($window);
+	my $value    = $window->value;
+	my $minimum  = $window->minValue;
+	my $maximum  = $window->maxValue;
+	my $position = $self->object_position($window);
+	my $size     = $self->object_wxsize($window);
+
+	return $self->nested(
+		$self->window_new($window),
+		"$parent,",
+		"$id,",
+		"$value,",
+		"$minimum,",
+		"$maximum,",
+		"$position,",
+		"$size,",
+		$self->window_style($window),
+		");",
+	);
+}
+
 sub spinctrl_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $variable = $self->object_variable($control);
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $value    = $self->quote( $control->value );
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
@@ -1334,7 +1465,7 @@ sub splitterwindow_create {
 	my $window   = shift;
 	my $variable = $self->object_variable($window);
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $window->id );
+	my $id       = $self->object_id($window);
 	my $position = $self->object_position($window);
 	my $size     = $self->object_wxsize($window);
 
@@ -1366,18 +1497,23 @@ sub splitterwindow_create {
 	return $lines;
 }
 
-sub statictext_create {
-	my $self    = shift;
-	my $control = shift;
-	my $parent  = $self->object_parent(@_);
-	my $id      = $self->wx( $control->id );
-	my $label   = $self->object_label($control);
+sub staticbitmap_create {
+	my $self     = shift;
+	my $window   = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($window);
+	my $bitmap   = $self->object_bitmap($window);
+	my $position = $self->object_position($window);
+	my $size     = $self->object_wxsize($window);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->window_new($window),
 		"$parent,",
 		"$id,",
-		"$label,",
+		"$bitmap,",
+		"$position,",
+		"$size,",
+		$self->window_style($window),
 		");",
 	);
 }
@@ -1386,7 +1522,7 @@ sub staticline_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -1401,6 +1537,22 @@ sub staticline_create {
 	);
 }
 
+sub statictext_create {
+	my $self    = shift;
+	my $control = shift;
+	my $parent  = $self->object_parent(@_);
+	my $id      = $self->object_id($control);
+	my $label   = $self->object_label($control);
+
+	return $self->nested(
+		$self->window_new($control),
+		"$parent,",
+		"$id,",
+		"$label,",
+		");",
+	);
+}
+
 sub statusbar_create {
 	my $self     = shift;
 	my $object   = shift;
@@ -1408,7 +1560,7 @@ sub statusbar_create {
 	my $parent   = $self->object_parent(@_);
 	my $fields   = $object->fields;
 	my $style    = $self->window_style($object, 0);
-	my $id       = $self->wx( $object->id );
+	my $id       = $self->object_id($object);
 
 	# If the status bar is not stored for later reference,
 	# don't create the variable at all to avoid perlcritic'ism
@@ -1427,7 +1579,7 @@ sub textctrl_create {
 	my $self      = shift;
 	my $control   = shift;
 	my $parent    = $self->object_parent(@_);
-	my $id        = $self->wx( $control->id );
+	my $id        = $self->object_id($control);
 	my $value     = $self->quote( $control->value );
 	my $position  = $self->object_position($control);
 	my $size      = $self->object_wxsize($control);
@@ -1452,13 +1604,41 @@ sub textctrl_create {
 	return $lines;
 }
 
+sub togglebutton_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $label    = $self->object_label($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	my $lines = $self->nested(
+		$self->window_new($control),
+		"$parent,",
+		"$id,",
+		"$label,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+
+	if ( $control->value ) {
+		my $variable = $self->object_variable($control);
+		push @$lines, "$variable->SetValue(1);";
+	}
+
+	return $lines;
+}
+
 sub tool_create {
 	my $self    = shift;
 	my $tool    = shift;
 	my $parent  = $self->object_parent(@_);
-	my $id      = $self->wx( $tool->id );
+	my $id      = $self->object_id($tool);
 	my $label   = $self->object_label($tool);
-	my $bitmap  = $self->bitmap( $tool->bitmap );
+	my $bitmap  = $self->object_bitmap($tool);
 	my $tooltip = $self->text( $tool->tooltip );
 	my $kind    = $self->wx( $tool->kind );
 
@@ -1480,7 +1660,7 @@ sub toolbar_create {
 	my $scope    = $self->object_scope($window);
 	my $variable = $self->object_variable($window);
 	my $style    = $self->wx($window->styles || 0);
-	my $id       = $self->wx( $window->id );
+	my $id       = $self->object_id($window);
 
 	# Generate child constructor code
 	my @children = map {
@@ -1500,7 +1680,7 @@ sub treebook_create {
 	my $self     = shift;
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
-	my $id       = $self->wx( $control->id );
+	my $id       = $self->object_id($control);
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 	my $style    = $self->wx(
@@ -1541,6 +1721,8 @@ sub children_pack {
 			push @children, $self->panel_pack($child);
 		} elsif ( $child->isa('FBP::SplitterWindow') ) {
 			push @children, $self->splitterwindow_pack($child);
+		} elsif ( $child->isa('FBP::ScrolledWindow') ) {
+			push @children, $self->scrolledwindow_pack($child);
 		} elsif ( $child->does('FBP::Children') ) {
 			if ( @{$child->children} ) {
 				die "Unsupported parent " . ref($child);
@@ -1811,6 +1993,31 @@ sub panel_pack {
 				: "$sizervar->Fit($variable);"
 			),
 		]
+	);
+}
+
+sub scrolledwindow_pack {
+	my $self     = shift;
+	my $window   = shift;
+	my $sizer    = $window->children->[0] or return ();
+	my $variable = $self->object_variable($window);
+	my $sizervar = $self->object_variable($sizer);
+
+	# Generate fragments for our (optional) child sizer
+	my @children = $self->sizer_pack($sizer);
+
+	# Attach the sizer to the panel
+	return (
+		@children,
+		[
+			"$variable->SetSizer($sizervar);",
+			"$variable->Layout;",
+			(
+				$self->size($window->size)
+				? ()
+				: "$sizervar->Fit($variable);"
+			),
+		],
 	);
 }
 
@@ -2130,6 +2337,12 @@ sub window_style {
 	return;
 }
 
+sub object_id {
+	my $self   = shift;
+	my $object = shift;
+	return $self->wx( $object->id );
+}
+
 sub object_accessor {
 	my $self   = shift;
 	my $object = shift;
@@ -2140,6 +2353,12 @@ sub object_accessor {
 		"\$_[0]->{$name};",
 		"}",
 	);
+}
+
+sub object_bitmap {
+	my $self   = shift;
+	my $object = shift;
+	return $self->bitmap( $object->bitmap );
 }
 
 sub object_event {
