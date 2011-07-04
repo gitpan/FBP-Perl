@@ -256,8 +256,23 @@ sub new {
 		Wx::wxHW_SCROLLBAR_AUTO,
 	);
 
-	$self->{m_checkBox1} = Wx::CheckBox->new(
+	$self->{m_notebook1} = Wx::Notebook->new(
 		$self,
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+	);
+
+	$self->{m_panel8} = Wx::Panel->new(
+		$self->{m_notebook1},
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxTAB_TRAVERSAL,
+	);
+
+	$self->{m_checkBox1} = Wx::CheckBox->new(
+		$self->{m_panel8},
 		-1,
 		Wx::gettext("Check Me!"),
 		Wx::wxDefaultPosition,
@@ -265,7 +280,7 @@ sub new {
 	);
 
 	$self->{m_checkBox2} = Wx::CheckBox->new(
-		$self,
+		$self->{m_panel8},
 		-1,
 		Wx::gettext("Check Me!"),
 		Wx::wxDefaultPosition,
@@ -273,7 +288,7 @@ sub new {
 	);
 
 	$self->{m_checkBox3} = Wx::CheckBox->new(
-		$self,
+		$self->{m_panel8},
 		-1,
 		Wx::gettext("Check Me!"),
 		Wx::wxDefaultPosition,
@@ -281,12 +296,63 @@ sub new {
 	);
 
 	$self->{m_checkBox4} = Wx::CheckBox->new(
-		$self,
+		$self->{m_panel8},
 		-1,
 		Wx::gettext("Check Me!"),
 		Wx::wxDefaultPosition,
 		Wx::wxDefaultSize,
 	);
+
+	$self->{m_panel9} = Wx::Panel->new(
+		$self->{m_notebook1},
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxTAB_TRAVERSAL,
+	);
+
+	$self->{m_treeCtrl1} = Wx::TreeCtrl->new(
+		$self->{m_panel9},
+		-1,
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxTR_DEFAULT_STYLE,
+	);
+
+	$self->{m_radioBtn1} = Wx::RadioButton->new(
+		$self->{m_panel9},
+		-1,
+		Wx::gettext("One"),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+	);
+
+	$self->{m_radioBtn2} = Wx::RadioButton->new(
+		$self->{m_panel9},
+		-1,
+		Wx::gettext("Two"),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+	);
+	$self->{m_radioBtn2}->SetValue(1);
+
+	$self->{m_radioBtn3} = Wx::RadioButton->new(
+		$self->{m_panel9},
+		-1,
+		Wx::gettext("This"),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+		Wx::wxRB_GROUP,
+	);
+
+	$self->{m_radioBtn4} = Wx::RadioButton->new(
+		$self->{m_panel9},
+		-1,
+		Wx::gettext("That"),
+		Wx::wxDefaultPosition,
+		Wx::wxDefaultSize,
+	);
+	$self->{m_radioBtn4}->SetValue(1);
 
 	$self->{m_listbook1} = Wx::Listbook->new(
 		$self,
@@ -573,6 +639,24 @@ sub new {
 	$gSizer1->Add( $self->{m_checkBox3}, 0, Wx::wxALL, 5 );
 	$gSizer1->Add( $self->{m_checkBox4}, 0, Wx::wxALL, 5 );
 
+	$self->{m_panel8}->SetSizer($gSizer1);
+	$self->{m_panel8}->Layout;
+	$gSizer1->Fit($self->{m_panel8});
+
+	my $bSizer12 = Wx::BoxSizer->new(Wx::wxHORIZONTAL);
+	$bSizer12->Add( $self->{m_treeCtrl1}, 0, Wx::wxALL, 5 );
+	$bSizer12->Add( $self->{m_radioBtn1}, 0, Wx::wxALL, 5 );
+	$bSizer12->Add( $self->{m_radioBtn2}, 0, Wx::wxALL, 5 );
+	$bSizer12->Add( $self->{m_radioBtn3}, 0, Wx::wxALL, 5 );
+	$bSizer12->Add( $self->{m_radioBtn4}, 0, Wx::wxALL, 5 );
+
+	$self->{m_panel9}->SetSizer($bSizer12);
+	$self->{m_panel9}->Layout;
+	$bSizer12->Fit($self->{m_panel9});
+
+	$self->{m_notebook1}->AddPage( $self->{m_panel8}, Wx::gettext("Checkboxes"), 1 );
+	$self->{m_notebook1}->AddPage( $self->{m_panel9}, Wx::gettext("Empty Tree"), 0 );
+
 	my $bSizer3 = Wx::BoxSizer->new(Wx::wxVERTICAL);
 	$bSizer3->Add( $self->{m_staticText2}, 0, Wx::wxALL, 5 );
 	$bSizer3->Add( $self->{m_spinCtrl1}, 0, Wx::wxALL, 5 );
@@ -625,7 +709,7 @@ sub new {
 	$bSizer2->Add( $bSizer10, 0, Wx::wxEXPAND, 5 );
 	$bSizer2->Add( $self->{m_staticline1}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
 	$bSizer2->Add( $self->{m_splitter1}, 1, Wx::wxEXPAND, 5 );
-	$bSizer2->Add( $gSizer1, 0, Wx::wxEXPAND, 5 );
+	$bSizer2->Add( $self->{m_notebook1}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
 	$bSizer2->Add( $self->{m_listbook1}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
 	$bSizer2->Add( $self->{m_listbook2}, 0, Wx::wxEXPAND | Wx::wxALL, 5 );
 

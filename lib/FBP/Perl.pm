@@ -54,9 +54,9 @@ use strict;
 use warnings;
 use Params::Util  1.00 ();
 use Data::Dumper 2.122 ();
-use FBP           0.33 ();
+use FBP           0.34 ();
 
-our $VERSION = '0.50';
+our $VERSION = '0.51';
 
 # Event Binding Table
 our %EVENT = (
@@ -162,6 +162,9 @@ our %EVENT = (
 	# wxRadioBox
 	OnRadioBox                => [ 'EVT_RADIOBOX'                   ],
 
+	# wxRadioButton
+	OnRadioButton             => [ 'EVT_RADIOBUTTON'                ],
+
 	# wxStdDialogButtonSizer
 	OnOKButtonClick           => [                                  ],
 	OnYesButtonClick          => [                                  ],
@@ -186,6 +189,28 @@ our %EVENT = (
 	OnToolClicked             => [ 'EVT_TOOL'                       ],
 	OnToolRClicked            => [ 'EVT_TOOL_RCLICKED'              ],
 	OnToolEnter               => [ 'EVT_TOOL_ENTER'                 ],
+
+	# wxTreeCtrl events
+	OnTreeGetInfo             => [ 'EVT_TREE_GET_INFO'              ],
+	OnTreeSetInfo             => [ 'EVT_TREE_SET_INFO'              ],
+	OnTreeItemGetTooltip      => [ 'EVT_TREE_ITEM_GETTOOLTIP'       ],
+	OnTreeStateImageClick     => [ 'EVT_TREE_STATE_IMAGE_CLICK'     ],
+	OnTreeBeginDrag           => [ 'EVT_TREE_BEGIN_DRAG'            ],
+	OnTreeBeginRDrag          => [ 'EVT_TREE_BEGIN_RDRAG'           ],
+	OnTreeEndDrag             => [ 'EVT_TREE_END_DRAG'              ],
+	OnTreeBeginLabelEdit      => [ 'EVT_TREE_BEGIN_LABEL_EDIT'      ],
+	OnTreeEndLabelEdit        => [ 'EVT_TREE_END_LABEL_EDIT'        ],
+	OnTreeItemActivated       => [ 'EVT_TREE_ITEM_ACTIVATED'        ],
+	OnTreeItemCollapsed       => [ 'EVT_TREE_ITEM_COLLAPSED'        ],
+	OnTreeItemCollapsing      => [ 'EVT_TREE_ITEM_COLLAPSING'       ],
+	OnTreeItemExpanded        => [ 'EVT_TREE_ITEM_EXPANDED'         ],
+	OnTreeItemExpanding       => [ 'EVT_TREE_ITEM_EXPANDING'        ],
+	OnTreeItemRightClick      => [ 'EVT_TREE_ITEM_RIGHT_CLICK'      ],
+	OnTreeItemMiddleClick     => [ 'EVT_TREE_ITEM_MIDDLE_CLICK'     ],
+	OnTreeSelChanged          => [ 'EVT_TREE_SEL_CHANGED'           ],
+	OnTreeSelChanging         => [ 'EVT_TREE_SEL_CHANGING'          ],
+	OnTreeKeyDown             => [ 'EVT_TREE_KEY_DOWN'              ],
+	OnTreeItemMenu            => [ 'EVT_TREE_ITEM_MENU'             ],
 );
 
 
@@ -740,10 +765,14 @@ sub window_create {
 		$lines = $self->listctrl_create($window, $parent);
 	} elsif ( $window->isa('FBP::MenuBar') ) {
 		$lines = $self->menubar_create($window, $parent);
+	} elsif ( $window->isa('FBP::Notebook') ) {
+		$lines = $self->notebook_create($window, $parent);
 	} elsif ( $window->isa('FBP::Panel') ) {
 		$lines = $self->panel_create($window, $parent);
 	} elsif ( $window->isa('FBP::RadioBox') ) {
 		$lines = $self->radiobox_create($window, $parent);
+	} elsif ( $window->isa('FBP::RadioButton') ) {
+		$lines = $self->radiobutton_create($window, $parent);
 	} elsif ( $window->isa('FBP::ScrolledWindow') ) {
 		$lines = $self->scrolledwindow_create($window, $parent);
 	} elsif ( $window->isa('FBP::SearchCtrl') ) {
@@ -768,6 +797,8 @@ sub window_create {
 		$lines = $self->togglebutton_create($window, $parent);
 	} elsif ( $window->isa('FBP::ToolBar') ) {
 		$lines = $self->toolbar_create($window, $parent);
+	} elsif ( $window->isa('FBP::TreeCtrl') ) {
+		$lines = $self->treectrl_create($window, $parent);
 	} else {
 		die 'Cannot create constructor code for ' . ref($window);
 	}
@@ -1348,6 +1379,25 @@ sub menuitem_create {
 	return $lines;
 }
 
+sub notebook_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	return $self->nested(
+		$self->window_new($control),
+		"$parent,",
+		"$id,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+}
+
 sub panel_create {
 	my $self     = shift;
 	my $window   = shift;
@@ -1390,6 +1440,34 @@ sub radiobox_create {
 		$self->window_style($control),
 		");",
 	);
+}
+
+sub radiobutton_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $label    = $self->object_label($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	my $lines = $self->nested(
+		$self->window_new($control),
+		"$parent,",
+		"$id,",
+		"$label,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+
+	if ( $control->value ) {
+		my $variable = $self->object_variable($control);
+		push @$lines, "$variable->SetValue(1);";
+	}
+
+	return $lines;
 }
 
 sub scrolledwindow_create {
@@ -1802,6 +1880,25 @@ sub treebook_create {
 	);
 }
 
+sub treectrl_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	return $self->nested(
+		$self->window_new($control),
+		"$parent,",
+		"$id,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+}
+
 
 
 
@@ -1820,6 +1917,8 @@ sub children_pack {
 			push @children, $self->sizer_pack($child);
 		} elsif ( $child->isa('FBP::Listbook') ) {
 			push @children, $self->listbook_pack($child);
+		} elsif ( $child->isa('FBP::Notebook') ) {
+			push @children, $self->notebook_pack($child);
 		} elsif ( $child->isa('FBP::Panel') ) {
 			push @children, $self->panel_pack($child);
 		} elsif ( $child->isa('FBP::SplitterWindow') ) {
@@ -1840,7 +1939,9 @@ sub sizer_pack {
 	my $self  = shift;
 	my $sizer = shift;
 
-	if ( $sizer->isa('FBP::FlexGridSizer') ) { 
+	if ( $sizer->isa('FBP::GridBagSizer') ) {
+		return $self->gridbagsizer_pack($sizer);
+	} elsif ( $sizer->isa('FBP::FlexGridSizer') ) { 
 		return $self->flexgridsizer_pack($sizer);
 	} elsif ( $sizer->isa('FBP::GridSizer') ) {
 		return $self->gridsizer_pack($sizer);
@@ -1853,6 +1954,36 @@ sub sizer_pack {
 	} else {
 		die "Unsupported sizer " . ref($sizer);
 	}
+}
+
+# Packing for Listbook, Notebook and Treebook
+sub book_pack {
+	my $self     = shift;
+	my $book     = shift;
+	my $variable = $self->object_variable($book);
+
+	# Generate fragments for our child panels
+	my @children = $self->children_pack($book);
+
+	# Add each of our child pages
+	my @lines = ();
+	foreach my $item ( @{$book->children} ) {
+		my $child = $item->children->[0];
+		if ( $child->isa('FBP::Panel') ) {
+			my $params = join(
+				', ',
+				$self->object_variable($child),
+				$self->object_label($item),
+				$item->select ? 1 : 0,
+			);
+			push @lines, "$variable->AddPage( $params );";
+
+		} else {
+			die "Unknown or unsupported book child " . ref($child);
+		}
+	}
+
+	return ( @children, \@lines );
 }
 
 sub boxsizer_pack {
@@ -1868,101 +1999,6 @@ sub boxsizer_pack {
 	# Add the content for this sizer
 	my @lines = (
 		"$scope$variable = Wx::BoxSizer->new($orient);",
-	);
-	foreach my $item ( @{$sizer->children} ) {
-		my $child  = $item->children->[0];
-		if ( $child->isa('FBP::Spacer') ) {
-			my $params = join(
-				', ',
-				$child->width,
-				$child->height,
-				$item->proportion,
-				$self->wx( $item->flag ),
-				$item->border,
-			);
-			push @lines, "$variable->Add( $params );";
-		} else {
-			my $params = join(
-				', ',
-				$self->object_variable($child),
-				$item->proportion,
-				$self->wx( $item->flag ),
-				$item->border,
-			);
-			push @lines, "$variable->Add( $params );";
-		}
-	}
-
-	return ( @children, \@lines );
-}
-
-sub staticboxsizer_pack {
-	my $self     = shift;
-	my $sizer    = shift;
-	my $scope    = $self->object_scope($sizer);
-	my $variable = $self->object_variable($sizer);
-	my $label    = $self->object_label($sizer);
-	my $orient   = $self->wx( $sizer->orient );
-
-	# Add the content for all our child sizers
-	my @children = $self->children_pack($sizer);
-
-	# Add the content for this sizer
-	my @lines = (
-		"$scope$variable = Wx::StaticBoxSizer->new(",
-		"\tWx::StaticBox->new(",
-		"\t\t\$self,",
-		"\t\t-1,",
-		"\t\t$label,",
-		"\t),",
-		"\t$orient,",
-		");",
-	);
-	foreach my $item ( @{$sizer->children} ) {
-		my $child  = $item->children->[0];
-		if ( $child->isa('FBP::Spacer') ) {
-			my $params = join(
-				', ',
-				$child->width,
-				$child->height,
-				$item->proportion,
-				$self->wx( $item->flag ),
-				$item->border,
-			);
-			push @lines, "$variable->Add( $params );";
-		} else {
-			my $params = join(
-				', ',
-				$self->object_variable($child),
-				$item->proportion,
-				$self->wx( $item->flag ),
-				$item->border,
-			);
-			push @lines, "$variable->Add( $params );";
-		}
-	}
-
-	return ( @children, \@lines );
-}
-
-sub gridsizer_pack {
-	my $self     = shift;
-	my $sizer    = shift;
-	my $scope    = $self->object_scope($sizer);
-	my $variable = $self->object_variable($sizer);
-	my $params   = join( ', ',
-		$sizer->rows,
-		$sizer->cols,
-		$sizer->vgap,
-		$sizer->hgap,
-	);
-
-	# Add the content for all our child sizers
-	my @children = $self->children_pack($sizer);
-
-	# Add the content for this sizer
-	my @lines = (
-		"$scope$variable = Wx::GridSizer->new( $params );",
 	);
 	foreach my $item ( @{$sizer->children} ) {
 		my $child  = $item->children->[0];
@@ -2047,6 +2083,114 @@ sub flexgridsizer_pack {
 	return ( @children, \@lines );
 }
 
+sub gridbagsizer_pack {
+	my $self      = shift;
+	my $sizer     = shift;
+	my $scope     = $self->object_scope($sizer);
+	my $variable  = $self->object_variable($sizer);
+	my $direction = $self->wx( $sizer->flexible_direction );
+	my $growmode  = $self->wx( $sizer->non_flexible_grow_mode );
+	my $params    = join ', ', $sizer->vgap, $sizer->hgap;
+
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($sizer);
+
+	# Add the content for this sizer
+	my @lines = (
+		"$scope$variable = Wx::GridBagSizer->new( $params );",
+	);
+	foreach my $row ( split /,/, $sizer->growablerows ) {
+		push @lines, "$variable->AddGrowableRow($row);";
+	}
+	foreach my $col ( split /,/, $sizer->growablecols ) {
+		push @lines, "$variable->AddGrowableCol($col);";
+	}
+	push @lines, "$variable->SetFlexibleDirection($direction);";
+	push @lines, "$variable->SetNonFlexibleGrowMode($growmode);";
+	foreach my $item ( @{$sizer->children} ) {
+		my $child   = $item->children->[0];
+		my $row     = $item->row;
+		my $column  = $item->column;
+		my $rowspan = $item->rowspan;
+		my $colspan = $item->colspan;
+		my $flag    = $self->wx( $item->flag );
+		my $border  = $item->border;
+		if ( $child->isa('FBP::Spacer') ) {
+			my $width  = $child->width;
+			my $height = $child->height;
+			push @lines, $self->nested(
+				"$variable->AddSpacer(",
+				"$width,",
+				"$height,",
+				"Wx::GBPosition->new( $row, $column ),",
+				"Wx::GBSpan->new( $rowspan, $colspan ),",
+				"$flag,",
+				"$border,",
+				");",
+			);
+		} else {
+			my $type = $child->isa('FBP::Sizer') ? 'Sizer' : 'Window';
+			push @lines, $self->nested(
+				"$variable->Add$type(",
+				$self->object_variable($child) . ',',
+				"Wx::GBPosition->new( $row, $column ),",
+				"Wx::GBSpan->new( $rowspan, $colspan ),",
+				"$flag,",
+				"$border,",
+				");",
+			);
+		}
+	}
+
+	return ( @children, \@lines );
+}
+
+sub gridsizer_pack {
+	my $self     = shift;
+	my $sizer    = shift;
+	my $scope    = $self->object_scope($sizer);
+	my $variable = $self->object_variable($sizer);
+	my $params   = join( ', ',
+		$sizer->rows,
+		$sizer->cols,
+		$sizer->vgap,
+		$sizer->hgap,
+	);
+
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($sizer);
+
+	# Add the content for this sizer
+	my @lines = (
+		"$scope$variable = Wx::GridSizer->new( $params );",
+	);
+	foreach my $item ( @{$sizer->children} ) {
+		my $child  = $item->children->[0];
+		if ( $child->isa('FBP::Spacer') ) {
+			my $params = join(
+				', ',
+				$child->width,
+				$child->height,
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		} else {
+			my $params = join(
+				', ',
+				$self->object_variable($child),
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		}
+	}
+
+	return ( @children, \@lines );
+}
+
 sub stddialogbuttonsizer_pack {
 	my $self      = shift;
 	my $sizer     = shift;
@@ -2068,32 +2212,11 @@ sub stddialogbuttonsizer_pack {
 }
 
 sub listbook_pack {
-	my $self     = shift;
-	my $book     = shift;
-	my $variable = $self->object_variable($book);
+	shift->book_pack(@_);
+}
 
-	# Generate fragments for our child panels
-	my @children = $self->children_pack($book);
-
-	# Add each of our child pages
-	my @lines = ();
-	foreach my $item ( @{$book->children} ) {
-		my $child = $item->children->[0];
-		if ( $child->isa('FBP::Panel') ) {
-			my $params = join(
-				', ',
-				$self->object_variable($child),
-				$self->object_label($item),
-				$item->select ? 1 : 0,
-			);
-			push @lines, "$variable->AddPage( $params );";
-
-		} else {
-			die "Unknown or unsupported book child " . ref($child);
-		}
-	}
-
-	return ( @children, \@lines );
+sub notebook_pack {
+	shift->book_pack(@_);
 }
 
 sub panel_pack {
@@ -2189,6 +2312,55 @@ sub splitterwindow_pack {
 	}
 
 	die "Unexpected number of splitterwindow children";
+}
+
+sub staticboxsizer_pack {
+	my $self     = shift;
+	my $sizer    = shift;
+	my $scope    = $self->object_scope($sizer);
+	my $variable = $self->object_variable($sizer);
+	my $label    = $self->object_label($sizer);
+	my $orient   = $self->wx( $sizer->orient );
+
+	# Add the content for all our child sizers
+	my @children = $self->children_pack($sizer);
+
+	# Add the content for this sizer
+	my @lines = (
+		"$scope$variable = Wx::StaticBoxSizer->new(",
+		"\tWx::StaticBox->new(",
+		"\t\t\$self,",
+		"\t\t-1,",
+		"\t\t$label,",
+		"\t),",
+		"\t$orient,",
+		");",
+	);
+	foreach my $item ( @{$sizer->children} ) {
+		my $child  = $item->children->[0];
+		if ( $child->isa('FBP::Spacer') ) {
+			my $params = join(
+				', ',
+				$child->width,
+				$child->height,
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		} else {
+			my $params = join(
+				', ',
+				$self->object_variable($child),
+				$item->proportion,
+				$self->wx( $item->flag ),
+				$item->border,
+			);
+			push @lines, "$variable->Add( $params );";
+		}
+	}
+
+	return ( @children, \@lines );
 }
 
 
