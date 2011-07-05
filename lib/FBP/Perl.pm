@@ -54,9 +54,9 @@ use strict;
 use warnings;
 use Params::Util  1.00 ();
 use Data::Dumper 2.122 ();
-use FBP           0.34 ();
+use FBP           0.36 ();
 
-our $VERSION = '0.51';
+our $VERSION = '0.52';
 
 # Event Binding Table
 our %EVENT = (
@@ -69,6 +69,18 @@ our %EVENT = (
 	# wxActivateEvent
 	OnActivate                => [ 'EVT_ACTIVATE'                   ],
 	OnActivateApp             => [ 'EVT_ACTIVATE_APP'               ],
+
+	# wxCalendar
+	OnCalendar                => [ 'EVT_CALENDAR'                   ],
+	OnCalendarSelChanged      => [ 'EVT_CALENDAR_SEL_CHANGED'       ],
+	OnCalendarDay             => [ 'EVT_CALENDAR_DAY'               ],
+	OnCalendarMonth           => [ 'EVT_CALENDAR_MONTH'             ],
+	OnCalendarYear            => [ 'EVT_CALENDAR_YEAR'              ],
+	OnCalendarWeekDayClicked  => [ 'EVT_CALENDAR_WEEKDAY_CLICKED'   ],
+
+	# wxChoicebook
+	OnChoicebookPageChanged   => [ 'EVT_CHOICEBOOK_PAGE_CHANGED'    ],
+	OnChoicebookPageChanging  => [ 'EVT_CHOICEBOOK_PAGE_CHANGING'   ],
 
 	# wxCommandEvent
 	OnButtonClick             => [ 'EVT_BUTTON'                     ],
@@ -101,6 +113,48 @@ our %EVENT = (
 	# wxFontPickerCtrl
 	OnFontChanged             => [ 'EVT_FONTPICKER_CHANGED'         ],
 
+	# wxGrid
+	OnGridCellLeftClick       => [ 'EVT_GRID_CELL_LEFT_CLICK'       ],
+	OnGridCellRightClick      => [ 'EVT_GRID_CELL_RIGHT_CLICK'      ],
+	OnGridCellLeftDClick      => [ 'EVT_GRID_CELL_LEFT_DCLICK'      ],
+	OnGridCellRightDClick     => [ 'EVT_GRID_CELL_RIGHT_DCLICK'     ],
+	OnGridLabelLeftClick      => [ 'EVT_GRID_LABEL_LEFT_CLICK'      ],
+	OnGridLabelRightClick     => [ 'EVT_GRID_LABEL_RIGHT_CLICK'     ],
+	OnGridLabelLeftDClick     => [ 'EVT_GRID_LABEL_LEFT_DCLICK'     ],
+	OnGridLabelRightDClick    => [ 'EVT_GRID_LABEL_RIGHT_DCLICK'    ],
+	OnGridCellChange          => [ 'EVT_GRID_CELL_CHANGE'           ],
+	OnGridSelectCell          => [ 'EVT_GRID_SELECT_CELL'           ],
+	OnGridEditorHidden        => [ 'EVT_GRID_EDITOR_HIDDEN'         ],
+	OnGridEditorShown         => [ 'EVT_GRID_EDITOR_SHOWN'          ],
+	OnGridColSize             => [ 'EVT_GRID_COL_SIZE'              ],
+	OnGridRowSize             => [ 'EVT_GRID_ROW_SIZE'              ],
+	OnGridRangeSelect         => [ 'EVT_GRID_RANGE_SELECT'          ],
+	OnGridEditorCreated       => [ 'EVT_GRID_EDITOR_CREATED'        ],
+
+	# Not sure why wxFormBuilder makes these grid event duplicates
+	# so we just slavishly cargo cult what they do in the C code.
+	OnGridCmdCellLeftClick    => [ 'EVT_GRID_CELL_LEFT_CLICK'       ],
+	OnGridCmdCellRightClick   => [ 'EVT_GRID_CELL_RIGHT_CLICK'      ],
+	OnGridCmdCellLeftDClick   => [ 'EVT_GRID_CELL_LEFT_DCLICK'      ],
+	OnGridCmdCellRightDClick  => [ 'EVT_GRID_CELL_RIGHT_DCLICK'     ],
+	OnGridCmdLabelLeftClick   => [ 'EVT_GRID_LABEL_LEFT_CLICK'      ],
+	OnGridCmdLabelRightClick  => [ 'EVT_GRID_LABEL_RIGHT_CLICK'     ],
+	OnGridCmdLabelLeftDClick  => [ 'EVT_GRID_LABEL_LEFT_DCLICK'     ],
+	OnGridCmdLabelRightDClick => [ 'EVT_GRID_LABEL_RIGHT_DCLICK'    ],
+	OnGridCmdCellChange       => [ 'EVT_GRID_CELL_CHANGE'           ],
+	OnGridCmdSelectCell       => [ 'EVT_GRID_SELECT_CELL'           ],
+	OnGridCmdEditorHidden     => [ 'EVT_GRID_EDITOR_HIDDEN'         ],
+	OnGridCmdEditorShown      => [ 'EVT_GRID_EDITOR_SHOWN'          ],
+	OnGridCmdColSize          => [ 'EVT_GRID_COL_SIZE'              ],
+	OnGridCmdRowSize          => [ 'EVT_GRID_ROW_SIZE'              ],
+	OnGridCmdRangeSelect      => [ 'EVT_GRID_RANGE_SELECT'          ],
+	OnGridCmdEditorCreated    => [ 'EVT_GRID_EDITOR_CREATED'        ],
+
+	# wxHtmlWindow
+	OnHtmlCellClicked         => [ 'EVT_HTML_CELL_CLICKED'          ],
+	OnHtmlCellHover           => [ 'EVT_HTML_CELL_HOVER'            ],
+	OnHtmlLinkClicked         => [ 'EVT_HTML_LINK_CLICKED'          ],
+
 	# wxIdleEvent
 	OnIdle                    => [ 'EVT_IDLE'                       ],
 
@@ -108,14 +162,6 @@ our %EVENT = (
 	OnChar                    => [ 'EVT_CHAR'                       ],
 	OnKeyDown                 => [ 'EVT_KEY_DOWN'                   ],
 	OnKeyUp                   => [ 'EVT_KEY_UP'                     ],
-
-	# wxHtmlWindow
-	OnHtmlCellClicked         => [ 'EVT_HTML_CELL_CLICKED'          ],
-	OnHtmlCellHover           => [ 'EVT_HTML_CELL_HOVER'            ],
-	OnHtmlLinkClicked         => [ 'EVT_HTML_LINK_CLICKED'          ],
-
-	# wxMenuEvent
-	OnMenuSelection           => [ 'EVT_MENU'                       ],
 
 	# wxListEvent
 	OnListBeginDrag           => [ 'EVT_LIST_BEGIN_DRAG'            ],
@@ -138,6 +184,9 @@ our %EVENT = (
 	OnListColBeginDrag        => [ 'EVT_LIST_COL_BEGIN_DRAG'        ],
 	OnListColDragging         => [ 'EVT_LIST_COL_DRAGGING'          ],
 	OnListColEndDrag          => [ 'EVT_LIST_COL_END_DRAG'          ],
+
+	# wxMenuEvent
+	OnMenuSelection           => [ 'EVT_MENU'                       ],
 
 	# wxMouseEvent
 	OnEnterWindow             => [ 'EVT_ENTER_WINDOW'               ],
@@ -165,7 +214,7 @@ our %EVENT = (
 	# wxRadioButton
 	OnRadioButton             => [ 'EVT_RADIOBUTTON'                ],
 
-	# wxStdDialogButtonSizer
+	# wxStdDialogButtonSizer (placeholders)
 	OnOKButtonClick           => [                                  ],
 	OnYesButtonClick          => [                                  ],
 	OnSaveButtonClick         => [                                  ],
@@ -178,6 +227,11 @@ our %EVENT = (
 	# wxSearchCtrl
 	OnSearchButton            => [ 'EVT_SEARCHCTRL_SEARCH_BTN'      ],
 	OnCancelButton            => [ 'EVT_SEARCHCTRL_CANCEL_BTN'      ],
+
+	# wxSpinButton
+	OnSpin                    => [ 'EVT_SCROLL_THUMBTRACK'          ],
+	OnSpinUp                  => [ 'EVT_SCROLL_LINEUP'              ],
+	OnSpinDown                => [ 'EVT_SCROLL_LINEDOWN'            ],
 
 	# wxSplitterEvent
 	OnSplitterSashPosChanging => [ 'EVT_SPLITTER_SASH_POS_CHANGING' ],
@@ -404,10 +458,19 @@ sub form_wx {
 	my $lines = [
 		"use Wx ':everything';",
 	];
+	if ( $topic->find_first( isa => 'FBP::RichTextCtrl' ) ) {
+		push @$lines, "use Wx::STC ();";
+	}
 	if ( $topic->find_first( isa => 'FBP::HtmlWindow' ) ) {
 		push @$lines, "use Wx::HTML ();";
 	}
-	if ( $topic->find_first( isa => 'FBP::DatePickerCtrl' ) ) {
+	if ( $topic->find_first( isa => 'FBP::Grid' ) ) {
+		push @$lines, "use Wx::Grid ();";
+	}
+	if ( $topic->find_first( isa => 'FBP::Calendar' ) ) {
+		push @$lines, "use Wx::Calendar ();";
+		push @$lines, "use Wx::DateTime ();";
+	} elsif ( $topic->find_first( isa => 'FBP::DatePickerCtrl' ) ) {
 		push @$lines, "use Wx::DateTime ();";
 	}
 	return $lines;
@@ -723,14 +786,20 @@ sub window_create {
 	my $parent = shift;
 	my $lines  = undef;
 
-	if ( $window->isa('FBP::BitmapButton') ) {
+	if ( $window->isa('FBP::AnimationCtrl') ) {
+		$lines = $self->animationctrl_create($window, $parent);
+	} elsif ( $window->isa('FBP::BitmapButton') ) {
 		$lines = $self->bitmapbutton_create($window, $parent);
 	} elsif ( $window->isa('FBP::Button') ) {
 		$lines = $self->button_create($window, $parent);
+	} elsif ( $window->isa('FBP::CalendarCtrl') ) {
+		$lines = $self->calendarctrl_create($window, $parent);
 	} elsif ( $window->isa('FBP::CheckBox') ) {
 		$lines = $self->checkbox_create($window, $parent);
 	} elsif ( $window->isa('FBP::Choice') ) {
 		$lines = $self->choice_create($window, $parent);
+	} elsif ( $window->isa('FBP::Choicebook') ) {
+		$lines = $self->choicebook_create($window, $parent);
 	} elsif ( $window->isa('FBP::ComboBox') ) {
 		$lines = $self->combobox_create($window, $parent);
 	} elsif ( $window->isa('FBP::ColourPickerCtrl') ) {
@@ -748,6 +817,10 @@ sub window_create {
 		$lines = $self->fontpickerctrl_create($window, $parent);
 	} elsif ( $window->isa('FBP::Gauge') ) {
 		$lines = $self->gauge_create($window, $parent);
+	} elsif ( $window->isa('FBP::GenericDirCtrl') ) {
+		$lines = $self->genericdirctrl_create($window, $parent);
+	} elsif ( $window->isa('FBP::Grid') ) {
+		$lines = $self->grid_create($window, $parent);
 	} elsif ( $window->isa('FBP::HtmlWindow') ) {
 		$lines = $self->htmlwindow_create($window, $parent);
 	} elsif ( $window->isa('FBP::HyperLink') ) {
@@ -773,12 +846,18 @@ sub window_create {
 		$lines = $self->radiobox_create($window, $parent);
 	} elsif ( $window->isa('FBP::RadioButton') ) {
 		$lines = $self->radiobutton_create($window, $parent);
+	} elsif ( $window->isa('FBP::RichTextCtrl') ) {
+		$lines = $self->richtextctrl_create($window, $parent);
+	} elsif ( $window->isa('FBP::ScrollBar') ) {
+		$lines = $self->scrollbar_create($window, $parent);
 	} elsif ( $window->isa('FBP::ScrolledWindow') ) {
 		$lines = $self->scrolledwindow_create($window, $parent);
 	} elsif ( $window->isa('FBP::SearchCtrl') ) {
 		$lines = $self->searchctrl_create($window, $parent);
 	} elsif ( $window->isa('FBP::Slider') ) {
 		$lines = $self->slider_create($window, $parent);
+	} elsif ( $window->isa('FBP::SpinButton') ) {
+		$lines = $self->spinbutton_create($window, $parent);
 	} elsif ( $window->isa('FBP::SpinCtrl') ) {
 		$lines = $self->spinctrl_create($window, $parent);
 	} elsif ( $window->isa('FBP::SplitterWindow') ) {
@@ -818,6 +897,43 @@ sub window_create {
 	return $lines;
 }
 
+sub animationctrl_create {
+	my $self      = shift;
+	my $control   = shift;
+	my $parent    = $self->object_parent(@_);
+	my $id        = $self->object_id($control);
+	my $animation = $self->animation($control->animation);
+	my $position  = $self->object_position($control);
+	my $size      = $self->object_wxsize($control);
+	my $variable  = $self->object_variable($control);
+	my $bitmap    = $self->bitmap($control->inactive_bitmap);
+
+	my $lines = $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"$animation,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+
+	unless ( $bitmap eq $self->bitmap(undef) ) {
+		push @$lines, $self->nested(
+			"$variable->SetInactiveBitmap(",
+			$bitmap,
+			");",
+		);
+	}
+
+	if ( $control->play ) {
+		push @$lines, "$variable->Play;";
+	}
+
+	return $lines;
+}
+
 sub bitmapbutton_create {
 	my $self     = shift;
 	my $control  = shift;
@@ -833,7 +949,7 @@ sub bitmapbutton_create {
 	my $focus    = $self->bitmap( $control->focus    );
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$bitmap,",
@@ -892,7 +1008,7 @@ sub button_create {
 	my $variable = $self->object_variable($control);
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$label,",
@@ -909,6 +1025,27 @@ sub button_create {
 	return $lines;
 }
 
+sub calendarctrl_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	# my $value    = $self->wx('wxDefaultDateTime'); # NOT IMPLEMENTED
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	return $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"undef,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+}
+
 sub checkbox_create {
 	my $self     = shift;
 	my $control  = shift;
@@ -919,7 +1056,7 @@ sub checkbox_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$label,",
@@ -940,12 +1077,31 @@ sub choice_create {
 	my $items     = $self->control_items($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
 		"$size,",
 		$items,
+		");",
+	);
+}
+
+sub choicebook_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	return $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
 		");",
 	);
 }
@@ -961,7 +1117,7 @@ sub combobox_create {
 	my $items    = $self->control_items($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -989,7 +1145,7 @@ sub colourpickerctrl_create {
 	}
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$colour,",
@@ -1008,7 +1164,7 @@ sub customcontrol_create {
 	my $id       = $self->object_id($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		");",
@@ -1025,7 +1181,7 @@ sub datepickerctrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -1047,7 +1203,7 @@ sub dirpickerctrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -1071,7 +1227,7 @@ sub filepickerctrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -1095,7 +1251,7 @@ sub fontpickerctrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$font,",
@@ -1113,6 +1269,230 @@ sub fontpickerctrl_create {
 	return $lines;
 }
 
+sub gauge_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $range    = $control->range;
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	my $lines = $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"$range,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+
+	# Set the value we are initially at
+	my $variable = $self->object_variable($control);
+	my $value    = $control->value;
+	if ( $value ) {
+		push @$lines, "$variable->SetValue($value);";
+	}
+
+	return $lines;
+}
+
+sub genericdirctrl_create {
+	my $self          = shift;
+	my $control       = shift;
+	my $parent        = $self->object_parent(@_);
+	my $id            = $self->object_id($control);
+	my $defaultfolder = $self->quote( $control->defaultfolder );
+	my $position      = $self->object_position($control);
+	my $size          = $self->object_wxsize($control);
+	my $filter        = $self->quote( $control->filter );
+	my $defaultfilter = $control->defaultfilter;
+
+	my $lines = $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"$defaultfolder,",
+		"$position,",
+		"$size,",
+		$self->window_style($control, 0),
+		"$filter,",
+		"$defaultfilter,",
+		");",
+	);
+
+	my $variable    = $self->object_variable($control);
+	my $show_hidden = $control->show_hidden;
+	push @$lines, "$variable->ShowHidden($show_hidden);";
+
+	return $lines;
+}
+
+sub grid_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	my $lines = $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+
+	# Grid
+	my $variable         = $self->object_variable($control);
+	my $rows             = $control->rows;
+	my $cols             = $control->cols;
+	my $editing          = $control->editing;
+	my $grid_lines       = $control->grid_lines;
+	my $drag_grid_size   = $control->drag_grid_size;
+	my $margin_width     = $control->margin_width;
+	my $margin_height    = $control->margin_height;
+
+	push @$lines, (
+		"$variable->CreateGrid( $rows, $cols );",
+		"$variable->EnableEditing($editing);",
+		"$variable->EnableGridLines($grid_lines);",
+	);
+	if ( $control->grid_line_color ) {
+		push @$lines, $self->nested(
+			"$variable->SetGridLineColour(",
+			$self->colour( $control->grid_line_color ),
+			");",
+		);
+	}
+	push @$lines, (
+		"$variable->EnableDragGridSize($drag_grid_size);",
+		"$variable->SetMargins( $margin_width, $margin_height );",
+	);
+
+	# Columns
+	my $drag_col_move             = $control->drag_col_move;
+	my $drag_col_size             = $control->drag_col_size;
+	my $col_label_size            = $control->col_label_size;
+	my $col_label_horiz_alignment = $self->wx( $control->col_label_horiz_alignment );
+	my $col_label_vert_alignment  = $self->wx( $control->col_label_vert_alignment );
+
+	if ( $control->column_sizes ) {
+		my @sizes = split /\s*,\s*/, $control->column_sizes;
+
+		push @$lines, map {
+			"$variable->SetColSize( $_, $sizes[$_] );"
+		} ( 0 .. $#sizes );
+	}
+	if ( $control->autosize_cols ) {
+		push @$lines, "$variable->AutoSizeColumns;";
+	}
+	push @$lines, (
+		"$variable->EnableDragColMove($drag_col_move);",
+		"$variable->EnableDragColSize($drag_col_size);",
+		"$variable->SetColLabelSize($col_label_size);",
+	);
+	if ( $control->col_label_values ) {
+		my @values = map {
+			$self->text($_)
+		} $self->list( $control->col_label_values );
+
+		push @$lines, map {
+			"$variable->SetColLabelValue( $_, $values[$_] );"
+		} ( 0 .. $#values );
+	}
+	push @$lines, "$variable->SetColLabelAlignment( $col_label_horiz_alignment, $col_label_vert_alignment );";
+
+	# Rows
+	my $drag_row_size = $control->drag_row_size;
+	my $row_label_horiz_alignment = $self->wx( $control->row_label_horiz_alignment );
+	my $row_label_vert_alignment  = $self->wx( $control->row_label_vert_alignment );
+
+	if ( $control->row_sizes ) {
+		my @sizes = split /\s*,\s*/, $control->row_sizes;
+
+		push @$lines, map {
+			"$variable->SetRowSize( $_, $sizes[$_] );"
+		} ( 0 .. $#sizes );
+	}
+	if ( $control->autosize_rows ) {
+		push @$lines, "$variable->AutoSizeRows;";
+	}
+	push @$lines, "$variable->EnableDragRowSize($drag_row_size);";
+	if ( $control->row_label_values ) {
+		my @values = map {
+			$self->text($_)
+		} $self->list( $control->row_label_values );
+
+		push @$lines, map {
+			"$variable->SetRowLabelValue( $_, $values[$_] );"
+		} ( 0 .. $#values );
+	}
+	push @$lines, "$variable->SetRowLabelAlignment( $row_label_horiz_alignment, $row_label_vert_alignment );";
+
+	# Label Appearance
+	if ( $control->label_bg ) {
+		my $colour = $self->colour( $control->label_bg );
+		push @$lines, (
+			"$variable->SetLabelBackgroundColour(",
+			"\t$colour",
+			");",
+		);
+	}
+	if ( $control->label_font ) {
+		my $font = $self->font( $control->label_font );
+		push @$lines, (
+			"$variable->SetLabelFont(",
+			"\t$font",
+			");",
+		);
+	}
+	if ( $control->label_text ) {
+		my $colour = $self->colour( $control->label_text );
+		push @$lines, (
+			"$variable->SetLabelTextColour(",
+			"\t$colour",
+			");",
+		);
+	}
+
+	# Cell Defaults
+	my $cell_horiz_alignment = $self->wx( $control->cell_horiz_alignment );
+	my $cell_vert_alignment  = $self->wx( $control->cell_vert_alignment );
+	if ( $control->cell_bg ) {
+		my $colour = $self->colour( $control->cell_bg );
+		push @$lines, (
+			"$variable->SetDefaultCellBackgroundColour(",
+			"\t$colour",
+			");",
+		);
+	}
+	if ( $control->cell_font ) {
+		my $font = $self->font( $control->cell_font );
+		push @$lines, (
+			"$variable->SetDefaultCellFont(",
+			"\t$font",
+			");",
+		);
+	}
+	if ( $control->cell_text ) {
+		my $colour = $self->colour( $control->cell_text );
+		push @$lines, (
+			"$variable->SetDefaultCellColour(",
+			"\t$colour",
+			");",
+		);
+	}
+	push @$lines, "$variable->SetDefaultCellAlignment( $cell_horiz_alignment, $cell_vert_alignment );";
+
+	return $lines;
+}
+
 sub htmlwindow_create {
 	my $self     = shift;
 	my $control  = shift;
@@ -1122,7 +1502,7 @@ sub htmlwindow_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1143,7 +1523,7 @@ sub hyperlink_create {
 	my $size     = $self->object_wxsize($control);
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$label,",
@@ -1184,36 +1564,6 @@ sub hyperlink_create {
 	return $lines;
 }
 
-sub gauge_create {
-	my $self     = shift;
-	my $control  = shift;
-	my $parent   = $self->object_parent(@_);
-	my $id       = $self->object_id($control);
-	my $range    = $control->range;
-	my $position = $self->object_position($control);
-	my $size     = $self->object_wxsize($control);
-
-	my $lines = $self->nested(
-		$self->window_new($control),
-		"$parent,",
-		"$id,",
-		"$range,",
-		"$position,",
-		"$size,",
-		$self->window_style($control),
-		");",
-	);
-
-	# Set the value we are initially at
-	my $variable = $self->object_variable($control);
-	my $value    = $control->value;
-	if ( $value ) {
-		push @$lines, "$variable->SetValue($value);";
-	}
-
-	return $lines;
-}
-
 sub listbook_create {
 	my $self     = shift;
 	my $control  = shift;
@@ -1223,7 +1573,7 @@ sub listbook_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1243,7 +1593,7 @@ sub listbox_create {
 	my $items    = $self->control_items($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1263,7 +1613,7 @@ sub listctrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1388,7 +1738,7 @@ sub notebook_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1407,7 +1757,7 @@ sub panel_create {
 	my $size     = $self->object_wxsize($window);
 
 	return $self->nested(
-		$self->window_new($window),
+		$self->object_new($window),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1429,7 +1779,7 @@ sub radiobox_create {
 	my $major    = $control->majorDimension || 1;
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$label,",
@@ -1452,7 +1802,7 @@ sub radiobutton_create {
 	my $size     = $self->object_wxsize($control);
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$label,",
@@ -1470,6 +1820,46 @@ sub radiobutton_create {
 	return $lines;
 }
 
+sub richtextctrl_create {
+	my $self     = shift;
+	my $control  = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	# my $value    = $self->wx('wxEmptyString'); # NOT IMPLEMENTED
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	return $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"undef,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+}
+
+sub scrollbar_create {
+	my $self     = shift;
+	my $control   = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	return $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
+		");",
+	);
+}
+
 sub scrolledwindow_create {
 	my $self     = shift;
 	my $window   = shift;
@@ -1482,7 +1872,7 @@ sub scrolledwindow_create {
 	my $scroll_y = $window->scroll_rate_y;
 
 	my $lines = $self->nested(
-		$self->window_new($window),
+		$self->object_new($window),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1507,7 +1897,7 @@ sub searchctrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -1545,7 +1935,7 @@ sub slider_create {
 	my $size     = $self->object_wxsize($window);
 
 	return $self->nested(
-		$self->window_new($window),
+		$self->object_new($window),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -1554,6 +1944,25 @@ sub slider_create {
 		"$position,",
 		"$size,",
 		$self->window_style($window),
+		");",
+	);
+}
+
+sub spinbutton_create {
+	my $self     = shift;
+	my $control   = shift;
+	my $parent   = $self->object_parent(@_);
+	my $id       = $self->object_id($control);
+	my $position = $self->object_position($control);
+	my $size     = $self->object_wxsize($control);
+
+	return $self->nested(
+		$self->object_new($control),
+		"$parent,",
+		"$id,",
+		"$position,",
+		"$size,",
+		$self->window_style($control),
 		");",
 	);
 }
@@ -1573,7 +1982,7 @@ sub spinctrl_create {
 	my $initial  = $control->initial;
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -1598,7 +2007,7 @@ sub splitterwindow_create {
 
 	# Object constructor
 	my $lines = $self->nested(
-		$self->window_new($window),
+		$self->object_new($window),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1634,7 +2043,7 @@ sub staticbitmap_create {
 	my $size     = $self->object_wxsize($window);
 
 	return $self->nested(
-		$self->window_new($window),
+		$self->object_new($window),
 		"$parent,",
 		"$id,",
 		"$bitmap,",
@@ -1654,7 +2063,7 @@ sub staticline_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1672,7 +2081,7 @@ sub statictext_create {
 	my $label   = $self->object_label($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$label,",
@@ -1717,7 +2126,7 @@ sub stddialogbuttonsizer_create {
 		my $id = $self->object_id($button);
 
 		my $lines = $self->nested(
-			$self->window_new($button),
+			$self->object_new($button),
 			"$parent,",
 			"$id,",
 			");",
@@ -1766,7 +2175,7 @@ sub textctrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$value,",
@@ -1795,7 +2204,7 @@ sub togglebutton_create {
 	my $size     = $self->object_wxsize($control);
 
 	my $lines = $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$label,",
@@ -1870,7 +2279,7 @@ sub treebook_create {
 	);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1889,7 +2298,7 @@ sub treectrl_create {
 	my $size     = $self->object_wxsize($control);
 
 	return $self->nested(
-		$self->window_new($control),
+		$self->object_new($control),
 		"$parent,",
 		"$id,",
 		"$position,",
@@ -1915,6 +2324,8 @@ sub children_pack {
 		my $child = $item->children->[0];
 		if ( $child->isa('FBP::Sizer') ) {
 			push @children, $self->sizer_pack($child);
+		} elsif ( $child->isa('FBP::Choicebook') ) {
+			push @children, $self->choicebook_pack($child);
 		} elsif ( $child->isa('FBP::Listbook') ) {
 			push @children, $self->listbook_pack($child);
 		} elsif ( $child->isa('FBP::Notebook') ) {
@@ -2048,10 +2459,10 @@ sub flexgridsizer_pack {
 	my @lines = (
 		"$scope$variable = Wx::FlexGridSizer->new( $params );",
 	);
-	foreach my $row ( split /,/, $sizer->growablerows ) {
+	foreach my $row ( split /\s*,\s*/, $sizer->growablerows ) {
 		push @lines, "$variable->AddGrowableRow($row);";
 	}
-	foreach my $col ( split /,/, $sizer->growablecols ) {
+	foreach my $col ( split /\s*,\s*/, $sizer->growablecols ) {
 		push @lines, "$variable->AddGrowableCol($col);";
 	}
 	push @lines, "$variable->SetFlexibleDirection($direction);";
@@ -2209,6 +2620,10 @@ sub stddialogbuttonsizer_pack {
 		@lines,
 		"$variable->Realize;",
 	];
+}
+
+sub choicebook_pack {
+	shift->book_pack(@_);
 }
 
 sub listbook_pack {
@@ -2612,13 +3027,25 @@ sub object_top {
 	return 0;
 }
 
-sub window_new {
+sub object_new {
 	my $self     = shift;
-	my $window   = shift;
-	my $scope    = $self->object_scope($window);
-	my $variable = $self->object_variable($window);
-	my $wxclass  = $window->wxclass;
+	my $object   = shift;
+	my $scope    = $self->object_scope($object);
+	my $variable = $self->object_variable($object);
+	my $wxclass  = $object->wxclass;
 	return "$scope$variable = $wxclass->new(";
+}
+
+sub window_new {
+	my $self    = shift;
+	my $window  = shift;
+	my $parent  = $self->object_parent(@_);
+	my $id      = $self->object_id($window);
+	return (
+		$self->object_new($window),
+		"$parent,",
+		"$id,",
+	);
 }
 
 sub window_style {
@@ -2741,6 +3168,15 @@ sub use_pragma {
 		"use strict;",
 		"use warnings;",
 	]
+}
+
+sub list {
+	my $self = shift;
+	my @list = $_[0] =~ /" ( (?: \\. | . )+? ) "/xg;
+	foreach ( @list ) {
+		s/\\(.)/$1/g;
+	}
+	return @list;
 }
 
 sub wx {
@@ -2869,19 +3305,30 @@ sub points {
 
 sub bitmap {
 	my $self   = shift;
-	my $bitmap = shift;
-	unless ( Params::Util::_STRING($bitmap) ) {
+	my $string = shift;
+	unless ( Params::Util::_STRING($string) ) {
 		return $self->wx('wxNullBitmap');
 	}
-	if ( $bitmap =~ s/; Load From File$// ) {
+	if ( $string =~ s/; Load From File$// ) {
 		# Use the file path exactly as is for now
 		my $type = $self->wx('wxBITMAP_TYPE_ANY');
-		my $file = $self->quote($bitmap);
+		my $file = $self->quote($string);
 		return "Wx::Bitmap->new( $file, $type )";
 	}
 
 	### To be completed
 	return $self->wx('wxNullBitmap');
+}
+
+sub animation {
+	my $self   = shift;
+	my $string = shift;
+	unless ( Params::Util::_STRING($string) ) {
+		return $self->wx('wxNullAnimation');
+	}
+
+	### To be completed
+	return $self->wx('wxNullAnimation');
 }
 
 sub indent {
