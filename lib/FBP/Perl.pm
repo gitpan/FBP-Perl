@@ -56,7 +56,7 @@ use Params::Util  1.00 ();
 use Data::Dumper 2.122 ();
 use FBP           0.36 ();
 
-our $VERSION = '0.54';
+our $VERSION = '0.55';
 
 # Event Binding Table
 our %EVENT = (
@@ -3341,20 +3341,15 @@ sub points {
 }
 
 sub bitmap {
-	my $self   = shift;
-	my $string = shift;
-	unless ( Params::Util::_STRING($string) ) {
+	my $self = shift;
+	my $file = $self->file(shift);
+	unless ( defined $file ) {
 		return $self->wx('wxNullBitmap');
 	}
-	if ( $string =~ s/; Load From File$// ) {
-		# Use the file path exactly as is for now
-		my $type = $self->wx('wxBITMAP_TYPE_ANY');
-		my $file = $self->quote($string);
-		return "Wx::Bitmap->new( $file, $type )";
-	}
 
-	### To be completed
-	return $self->wx('wxNullBitmap');
+	# Use the file path exactly as is for now
+	my $type = $self->wx('wxBITMAP_TYPE_ANY');
+	return "Wx::Bitmap->new( $file, $type )";
 }
 
 sub animation {
@@ -3366,6 +3361,14 @@ sub animation {
 
 	### To be completed
 	return $self->wx('wxNullAnimation');
+}
+
+sub file {
+	my $self   = shift;
+	my $string = shift;
+	return undef unless Params::Util::_STRING($string);
+	return undef unless $string =~ s/; Load From File$//;
+	return $self->quote($string);
 }
 
 sub indent {
