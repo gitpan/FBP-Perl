@@ -6,14 +6,14 @@ BEGIN {
 	$^W = 1;
 }
 
-use Test::More tests => 10;
+use Test::More tests => 9;
 use Test::NoWarnings;
 use t::lib::Test;
 use FBP::Perl;
 
 # Find the sample files
 my $input  = File::Spec->catfile( 't', 'data', 'simple.fbp' );
-my $output = File::Spec->catfile( 't', 'data', 'panel.pl'  );
+my $output = File::Spec->catfile( 't', 'data', 'script.pl'  );
 ok( -f $input,  "Found test file $input"  );
 ok( -f $output, "Found test file $output" );
 
@@ -27,18 +27,15 @@ my $project = $fbp->find_first(
 	isa => 'FBP::Project',
 );
 my $code = FBP::Perl->new(
-	project => $project,
-	version => $FBP::Perl::VERSION,
+	project  => $project,
+	version  => $FBP::Perl::VERSION,
+	nocritic => 1,
 );
 isa_ok( $project, 'FBP::Project' );
 isa_ok( $code, 'FBP::Perl' );
 
-# Test Dialog string generators
-my $panel = $fbp->form('MyPanel1');
-isa_ok( $panel, 'FBP::FormPanel' );
-
 # Generate the entire dialog constructor
-my $have = $code->panel_class($panel);
+my $have = $code->script_app;
 my $want = slurp($output);
-code( $have, $want, '->panel_class ok' );
-compiles( $have, 'Panel class compiled' );
+code( $have, $want, '->app_class ok' );
+compiles( $have, 'Project class compiled' );

@@ -1,4 +1,4 @@
-package MyFrame1;
+package t::lib::MyFrame1;
 
 ## no critic
 
@@ -7,7 +7,7 @@ use strict;
 use warnings;
 use Wx ':everything';
 
-our $VERSION = '0.01';
+our $VERSION = '0.58';
 our @ISA     = 'Wx::Frame';
 
 sub new {

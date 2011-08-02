@@ -56,7 +56,8 @@ use Params::Util  1.00 ();
 use Data::Dumper 2.122 ();
 use FBP           0.37 ();
 
-our $VERSION = '0.57';
+our $VERSION    = '0.58';
+our $COMPATIBLE = '0.57';
 
 # Event Binding Table
 our %EVENT = (
@@ -282,11 +283,11 @@ has project => (
 	required => 1,
 );
 
-has nocritic => (
+has version => (
 	is       => 'ro',
-	isa      => 'Bool',
+	isa      => 'Str',
 	required => 1,
-	default  => 0,
+	default  => '0.01',
 );
 
 has i18n => (
@@ -305,6 +306,13 @@ has i18n_trim => (
 	default  => 0,
 );
 
+has nocritic => (
+	is       => 'ro',
+	isa      => 'Bool',
+	required => 1,
+	default  => 0,
+);
+
 no Mouse;
 
 
@@ -312,24 +320,46 @@ no Mouse;
 
 
 ######################################################################
-# High Level Methods
+# Project Wide Generators
 
-sub dialog_write {
-	my $self   = shift;
-	my $dialog = shift;
-	my $path   = shift;
+sub project_header {
+	my $self  = shift;
+	my $lines = [];
 
-	# Generate the code
-	my $code = $self->flatten(
-		$self->dialog_class($dialog)
-	);
+	# If the code is being generated for use in a project that uses
+	# Perl::Critic then we could generate all kinds of critic warnings the
+	# maintainer can't do anything about it. So we nocritic the whole file.
+	if ( $self->nocritic ) {
+		push @$lines, (
+			"## no critic",
+		);
+	}
 
-	# Write it to the file
-	open( my $file, '>', $path ) or die "open($path): $!";
-	$file->print( $code );
-	$file->close;
+	# Add an extra spacer line if needed
+	if ( @$lines ) {
+		push @$lines, "";
+	}
 
-	return 1;
+	return $lines;
+}
+
+sub project_pragma {
+	my $self  = shift;
+
+	return [
+		"use 5.008;",
+		"use strict;",
+		"use warnings;",
+	]
+}
+
+sub project_version {
+	my $self    = shift;
+	my $version = $self->version;
+
+	return [
+		"our \$VERSION = '$version';",
+	];
 }
 
 
@@ -337,18 +367,63 @@ sub dialog_write {
 
 
 ######################################################################
-# Project Generators
+# Launch Script Generator
 
-sub project_class {
+sub script_app {
 	my $self    = shift;
-	my $project = shift;
-	my $package = $self->project_package($project);
-	my $header  = $self->project_header($project);
-	my $pragma  = $self->use_pragma($project);
-	my $wx      = $self->project_wx($project);
-	my $forms   = $self->project_forms($project);
-	my $version = $self->project_version($project);
-	my $isa     = $self->project_isa($project);
+	my $pragma  = $self->script_pragma;
+	my $header  = $self->script_header;
+	my $package = $self->app_package;
+	my $version = $self->script_version;
+
+	return [
+		"#!/usr/bin/perl",
+		"",
+		@$header,
+		@$pragma,
+		"use $package ();",
+		"",
+		@$version,
+		"",
+		"$package->run;",
+		"",
+		"exit(0);",
+	];
+}
+
+sub script_header {
+	shift->project_header(@_);
+}
+
+sub script_pragma {
+	shift->project_pragma(@_);
+}
+
+sub script_version {
+	$_[0]->project_version;
+}
+
+
+
+
+
+######################################################################
+# Wx::App Generators
+
+sub app_class {
+	my $self    = shift;
+	my $package = $self->app_package;
+	my $header  = $self->app_header;
+	my $pragma  = $self->app_pragma;
+	my $wx      = $self->app_wx;
+	my $forms   = $self->app_forms;
+	my $version = $self->app_version;
+	my $isa     = $self->app_isa;
+
+	# Find the first frame, our default top frame
+	my $require = $self->form_package(
+		$self->project->find_first( isa => 'FBP::Frame' )
+	);
 
 	return [
 		"package $package;",
@@ -361,25 +436,51 @@ sub project_class {
 		@$version,
 		@$isa,
 		"",
+		"sub run {",
+		$self->indent(
+			"shift->new(\@_)->MainLoop;",
+		),
+		"}",
+		"",
+		"sub OnInit {",
+		$self->indent(
+			"my \$self = shift;",
+			"",
+			"# Create the primary frame",
+			"require $require;",
+			"\$self->SetTopWindow( $require->new );",
+			"",
+			"# Don't flash frames on the screen in tests",
+			"unless ( \$ENV{HARNESS_ACTIVE} ) {",
+			$self->indent(
+				"\$self->GetTopWindow->Show(1);",
+			),
+			"}",
+			"",
+			"return 1;",
+		),
+		"}",
+		"",
 		"1;"
 	];
 }
 
-sub project_package {
-	my $self    = shift;
-	my $project = shift;
-
-	# For the time being just use the plain name
-	return $project->name;
+# For the time being just use the plain name
+sub app_package {
+	$_[0]->project->name;
 }
 
-sub project_header {
-	shift->package_header(@_);
+sub app_header {
+	shift->project_header(@_);
 }
 
-sub project_wx {
+sub app_pragma {
+	shift->project_pragma(@_);
+}
+
+sub app_wx {
 	my $self    = shift;
-	my $project = shift;
+	my $project = $self->project;
 	my @lines   = (
 		"use Wx ':everything';",
 	);
@@ -395,29 +496,23 @@ sub project_wx {
 	return \@lines;
 }
 
-sub project_forms {
-	my $self    = shift;
-	my $project = shift;
+sub app_forms {
+	my $self = shift;
 
 	return [
 		map {
 			"use $_ ();"
 		} map {
 			$self->form_package($_)
-		} $project->forms
+		} $self->project->forms
 	];
 }
 
-sub project_version {
-	my $self    = shift;
-	my $project = shift;
-
-	return [
-		"our \$VERSION = '0.01';",
-	];
+sub app_version {
+	shift->project_version(@_);
 }
 
-sub project_isa {
+sub app_isa {
 	my $self = shift;
 
 	return [
@@ -449,7 +544,7 @@ sub form_class {
 	my $form    = shift;
 	my $package = $self->form_package($form);
 	my $header  = $self->form_header($form);
-	my $pragma  = $self->use_pragma($form);
+	my $pragma  = $self->project_pragma($form);
 	my $wx      = $self->form_wx($form);
 	my $more    = $self->form_custom($form);
 	my $version = $self->form_version($form);
@@ -484,7 +579,7 @@ sub form_package {
 }
 
 sub form_header {
-	shift->package_header(@_);
+	shift->project_header(@_);
 }
 
 sub form_wx {
@@ -533,7 +628,7 @@ sub form_version {
 	my $form = shift;
 
 	# Ignore the form and inherit from the parent project
-	return $self->project_version( $self->project );
+	return $self->project_version;
 }
 
 sub form_isa {
@@ -2055,13 +2150,13 @@ sub splitterwindow_create {
 	my $sashsize      = $window->sashsize;
 	my $sashgravity   = $window->sashgravity;
 	my $min_pane_size = $window->min_pane_size;
-	if ( $sashgravity > 0 ) {
+	if ( length $sashgravity and $sashgravity >= 0 ) {
 		push @$lines, "$variable->SetSashGravity($sashgravity);";
 	}
-	if ( $sashsize >= 0 ) {
+	if ( length $sashsize and $sashsize >= 0 ) {
 		push @$lines, "$variable->SetSashSize($sashsize);";
 	}
-	if ( $min_pane_size ) {
+	if ( $min_pane_size and $min_pane_size > 0 ) {
 		push @$lines, "$variable->SetMinimumPaneSize($min_pane_size);";
 	}
 
@@ -2746,7 +2841,7 @@ sub splitterwindow_pack {
 		my $sashpos = $window->sashpos;
 		my $window1 = $self->object_variable($windows[0]);
 		my $window2 = $self->object_variable($windows[1]);
-		my $method  = $window->splitmode eq 'wxVERTICAL'
+		my $method  = $window->splitmode eq 'wxSPLIT_HORIZONTAL'
 		            ? 'SplitHorizontally'
 		            : 'SplitVertically';
 		return (
@@ -3194,35 +3289,6 @@ sub control_params {
 ######################################################################
 # Support Methods
 
-sub package_header {
-	my $self   = shift;
-	my $object = shift;
-	my $lines  = [];
-
-	# If the code is being generated for use in a project that uses
-	# Perl::Critic then we could generate all kinds of critic warnings the
-	# maintainer can't do anything about it. So we nocritic the whole file.
-	if ( $self->nocritic ) {
-		push @$lines, (
-			"## no critic",
-			"",
-		);
-	}
-
-	return $lines;
-}
-
-sub use_pragma {
-	my $self  = shift;
-	my $topic = shift;
-
-	return [
-		"use 5.008;",
-		"use strict;",
-		"use warnings;",
-	]
-}
-
 sub list {
 	my $self = shift;
 	my @list = $_[0] =~ /" ( (?: \\. | . )+? ) "/xg;
@@ -3414,7 +3480,9 @@ sub file {
 }
 
 sub indent {
-	map { /\S/ ? "\t$_" : $_ } @{$_[1]};
+	map { /\S/ ? "\t$_" : $_ } (
+		ref($_[1]) ? @{$_[1]} : @_[1..$#_]
+	);
 }
 
 # Indent except for the first and last lines.
