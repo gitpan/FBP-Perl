@@ -30,6 +30,7 @@ t/data/trim.pl
 t/lib/Custom.pm
 t/lib/MyClass.pm
 t/lib/MyFrame1.pm
+t/lib/MyHtmlWindow.pm
 t/lib/Simple.pm
 t/lib/Test.pm
 xt/meta.t
