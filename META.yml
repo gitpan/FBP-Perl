@@ -26,11 +26,11 @@ no_index:
     - xt
 requires:
   Data::Dumper: 2.122
-  FBP: 0.37
+  FBP: 0.38
   Params::Util: 1.00
   perl: 5.8.5
 resources:
   ChangeLog: http://fisheye2.atlassian.com/changelog/cpan/trunk/FBP-Perl
   license: http://dev.perl.org/licenses/
   repository: http://svn.ali.as/cpan/trunk/FBP-Perl
-version: 0.63
+version: 0.64
