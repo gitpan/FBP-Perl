@@ -38,7 +38,6 @@
       },
       "runtime" : {
          "requires" : {
-            "Data::Dumper" : "2.122",
             "FBP" : "0.38",
             "Params::Util" : "1.00",
             "perl" : "5.008005"
@@ -55,6 +54,6 @@
       },
       "x_ChangeLog" : "http://fisheye2.atlassian.com/changelog/cpan/trunk/FBP-Perl"
    },
-   "version" : "0.65",
+   "version" : "0.66",
    "x_module_name" : "FBP::Perl"
 }

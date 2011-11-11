@@ -22,7 +22,8 @@ t/04_panel.t
 t/05_app.t
 t/06_trim.t
 t/07_script.t
-t/08_demo.t
+t/08_utf8.t
+t/09_demo.t
 t/data/demo.fbp
 t/data/dialog.pl
 t/data/FBP-Demo/lib/FBP/Demo.pm
