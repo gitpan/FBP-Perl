@@ -24,10 +24,16 @@ t/06_trim.t
 t/07_script.t
 t/08_utf8.t
 t/09_demo.t
+t/10_shim.t
+t/11_shim_deep.t
 t/data/demo.fbp
 t/data/dialog.pl
 t/data/FBP-Demo/lib/FBP/Demo.pm
+t/data/FBP-Demo/lib/FBP/Demo/FBP/Main.pm
+t/data/FBP-Demo/lib/FBP/Demo/Frame/Main.pm
 t/data/FBP-Demo/lib/FBP/Demo/Main.pm
+t/data/FBP-Demo/lib/FBP/Demo/MainShim.pm
+t/data/FBP-Demo/lib/FBP/DemoDeep.pm
 t/data/FBP-Demo/script/fbpdemo
 t/data/padre-plugin.png
 t/data/panel.pl

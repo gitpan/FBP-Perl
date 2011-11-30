@@ -1,4 +1,4 @@
-package t::lib::Simple;
+package FBP::Demo;
 
 ## no critic
 
@@ -7,10 +7,8 @@ use utf8;
 use strict;
 use warnings;
 use Wx 0.98 ':everything';
-use Wx::Html ();
-use Wx::Locale ();
 
-our $VERSION = '0.67';
+our $VERSION = '0.01';
 our @ISA     = 'Wx::App';
 
 sub run {
@@ -23,8 +21,8 @@ sub OnInit {
 	my $self = shift;
 
 	# Create the primary frame
-	require t::lib::MyFrame1;
-	$self->SetTopWindow( t::lib::MyFrame1->new );
+	require FBP::Demo::Frame::Main;
+	$self->SetTopWindow( FBP::Demo::Frame::Main->new );
 
 	# Don't flash frames on the screen in tests
 	unless ( $ENV{HARNESS_ACTIVE} ) {

@@ -53,11 +53,12 @@ use 5.008005;
 use strict;
 use warnings;
 use B                  ();
+use Scalar::Util  1.19 ();
 use Params::Util  1.00 ();
 use FBP           0.38 ();
 
-our $VERSION    = '0.66';
-our $COMPATIBLE = '0.57';
+our $VERSION    = '0.67';
+our $COMPATIBLE = '0.67';
 
 # Event Binding Table
 our %EVENT = (
@@ -305,7 +306,10 @@ sub new {
 	unless ( defined $self->nocritic ) {
 		$self->{nocritic} = 0;
 	}
-	$self->{nocritic} = $self->nocritic ? 1 : 0;
+	$self->{nocritic}  = $self->nocritic  ? 1 : 0;
+	$self->{shim}      = $self->shim      ? 1 : 0;
+	$self->{shim_deep} = $self->shim_deep ? 1 : 0;
+	$self->{shim_deep} = 0 unless $self->shim;
 
 	return $self;
 }
@@ -332,6 +336,14 @@ sub i18n_trim {
 
 sub nocritic {
 	$_[0]->{nocritic};
+}
+
+sub shim {
+	$_[0]->{shim};
+}
+
+sub shim_deep {
+	$_[0]->{shim_deep};
 }
 
 
@@ -401,8 +413,8 @@ sub project_utf8 {
 
 sub script_app {
 	my $self    = shift;
-	my $pragma  = $self->script_pragma;
 	my $header  = $self->script_header;
+	my $pragma  = $self->script_pragma;
 	my $package = $self->app_package;
 	my $version = $self->script_version;
 
@@ -451,9 +463,10 @@ sub app_class {
 	my $isa     = $self->app_isa;
 
 	# Find the first frame, our default top frame
-	my $require = $self->form_package(
-		$self->project->find_first( isa => 'FBP::Frame' )
-	);
+	my $frame   = $self->project->find_first( isa => 'FBP::Frame' );
+	my $require = $self->shim
+		? $self->shim_package($frame)
+		: $self->form_package($frame);
 
 	return [
 		"package $package;",
@@ -537,14 +550,16 @@ sub app_wx {
 }
 
 sub app_forms {
-	my $self = shift;
+	my $self  = shift;
+	my @forms = $self->project->forms;
+	my @names = $self->shim
+		? ( map { $self->shim_package($_) } @forms )
+		: ( map { $self->form_package($_) } @forms );
 
 	return [
 		map {
 			"use $_ ();"
-		} map {
-			$self->form_package($_)
-		} $self->project->forms
+		} @names
 	];
 }
 
@@ -554,10 +569,102 @@ sub app_version {
 
 sub app_isa {
 	my $self = shift;
+	return $self->ourisa(
+		$self->app_super(@_)
+	);
+}
+
+sub app_super {
+	return 'Wx::App';
+}
+
+
+
+
+
+######################################################################
+# Shim Generators
+
+sub shim_class {
+	my $self = shift;
+	my $form = shift;
+	my $package = $self->shim_package($form);
+	my $header  = $self->shim_header($form);
+	my $pragma  = $self->shim_pragma($form);
+	my $more    = $self->shim_more($form);
+	my $version = $self->shim_version($form);
+	my $isa     = $self->shim_isa($form);
 
 	return [
-		"our \@ISA     = 'Wx::App';",
+		"package $package;",
+		"",
+		@$header,
+		@$pragma,
+		@$more,
+		"",
+		@$version,
+		@$isa,
+		"",
+		"1;",
 	];
+}
+
+sub shim_package {
+	my $self = shift;
+	my $form = shift;
+	my $name = $form->name;
+
+	# If the project has a namespace nest the name inside it
+	if ( $self->project->namespace ) {
+		if ( $self->shim_deep ) {
+			my $type = Scalar::Util::blessed($form);
+			$type =~ s/^.*?(\w+)$/$1/;
+			$name = join '::', $type, $name;
+		}
+		$name = join '::', $self->app_package, $name;
+	}
+
+	# Otherwise the name is the full namespace
+	return $name;
+}
+
+sub shim_header {
+	shift->project_header(@_);
+}
+
+sub shim_pragma {
+	shift->project_pragma(@_);
+}
+
+sub shim_more {
+	my $self = shift;
+	my $form = shift;
+
+	# We only need to load our super class
+	my $super = $self->form_package($form);
+
+	return [
+		"use $super ();",
+	];
+}
+
+sub shim_version {
+	my $self = shift;
+	my $form = shift;
+
+	# Ignore the form and inherit from the parent project
+	return $self->project_version;
+}
+
+sub shim_isa {
+	my $self = shift;
+	return $self->ourisa(
+		$self->shim_super(@_)
+	);
+}
+
+sub shim_super {
+	shift->form_package(@_);
 }
 
 
@@ -567,24 +674,12 @@ sub app_isa {
 ######################################################################
 # Form Generators
 
-sub dialog_class {
-	shift->form_class(@_);
-}
-
-sub frame_class {
-	shift->form_class(@_);
-}
-
-sub panel_class {
-	shift->form_class(@_);
-}
-
 sub form_class {
 	my $self    = shift;
 	my $form    = shift;
 	my $package = $self->form_package($form);
 	my $header  = $self->form_header($form);
-	my $pragma  = $self->project_pragma($form);
+	my $pragma  = $self->form_pragma($form);
 	my $wx      = $self->form_wx($form);
 	my $more    = $self->form_custom($form);
 	my $version = $self->form_version($form);
@@ -610,21 +705,54 @@ sub form_class {
 	];
 }
 
+sub dialog_class {
+	shift->form_class(@_);
+}
+
+sub frame_class {
+	shift->form_class(@_);
+}
+
+sub panel_class {
+	shift->form_class(@_);
+}
+
 sub form_package {
 	my $self = shift;
 	my $form = shift;
 
-	# If the project has a namespace nest the name inside it
-	if ( $self->project->namespace ) {
-		return join '::', $self->app_package, $form->name;
+	unless ( $self->project->namespace ) {
+		# A simple standalone full namespace
+		if ( $self->shim ) {
+			return join '::', $form->name, 'FBP';
+		} else {
+			return $form->name;
+		}
 	}
 
-	# Otherwise the name is the full namespace
-	return $form->name;
+	# Nest the name inside the project namespace
+	if ( $self->shim ) {
+		return join(
+			'::',
+			$self->app_package,
+			'FBP',
+			$form->name,
+		);
+	} else {
+		return join(
+			'::',
+			$self->app_package,
+			$form->name,
+		);
+	}
 }
 
 sub form_header {
 	shift->project_header(@_);
+}
+
+sub form_pragma {
+	shift->project_pragma(@_);
 }
 
 sub form_wx {
@@ -677,23 +805,21 @@ sub form_version {
 }
 
 sub form_isa {
+	my $self  = shift;
+	return $self->ourisa(
+		$self->form_super(@_)
+	);
+}
+
+sub form_super {
 	my $self = shift;
 	my $form = shift;
 	if ( $form->isa('FBP::Dialog') ) {
-		return [
-			"our \@ISA     = 'Wx::Dialog';",
-		];
-
+		return 'Wx::Dialog';
 	} elsif ( $form->isa('FBP::Frame') ) {
-		return [
-			"our \@ISA     = 'Wx::Frame';",
-		];
-
+		return 'Wx::Frame';
 	} elsif ( $form->isa('FBP::Panel') ) {
-		return [
-			"our \@ISA     = 'Wx::Panel';",
-		];
-
+		return 'Wx::Panel';
 	} else {
 		die "Unsupported form " . ref($form);
 	}
@@ -702,7 +828,7 @@ sub form_isa {
 sub form_new {
 	my $self    = shift;
 	my $form    = shift;
-	my $super   = $self->form_super($form);
+	my $super   = $self->form_supernew($form);
 	my @windows = $self->children_create($form);
 	my @sizers  = $self->form_sizers($form);
 	my $status  = $form->find_first( isa => 'FBP::StatusBar' );
@@ -733,21 +859,21 @@ sub form_new {
 	);
 }
 
-sub form_super {
+sub form_supernew {
 	my $self = shift;
 	my $form = shift;
 	if ( $form->isa('FBP::Dialog') ) {
-		return $self->dialog_super($form);
+		return $self->dialog_supernew($form);
 	} elsif ( $form->isa('FBP::Frame') ) {
-		return $self->frame_super($form);
+		return $self->frame_supernew($form);
 	} elsif ( $form->isa('FBP::Panel') ) {
-		return $self->panel_super($form);
+		return $self->panel_supernew($form);
 	} else {
 		die "Unsupported top class " . ref($form);
 	}
 }
 
-sub dialog_super {
+sub dialog_supernew {
 	my $self     = shift;
 	my $dialog   = shift;
 	my $id       = $self->object_id($dialog);
@@ -767,7 +893,7 @@ sub dialog_super {
 	);
 }
 
-sub frame_super {
+sub frame_supernew {
 	my $self     = shift;
 	my $frame    = shift;
 	my $id       = $self->object_id($frame);
@@ -787,7 +913,7 @@ sub frame_super {
 	);
 }
 
-sub panel_super {
+sub panel_supernew {
 	my $self     = shift;
 	my $panel    = shift;
 	my $id       = $self->object_id($panel);
@@ -3288,6 +3414,30 @@ sub list {
 		s/\\(.)/$1/g;
 	}
 	return @list;
+}
+
+sub ourisa {
+	my $self  = shift;
+	my @super = shift;
+
+	# Complex inheritance
+	if ( @super > 1 ) {
+		return [
+			"our \@ISA     = qw{",
+			( map { "\t$_" } @super ),
+			"};",
+		];
+	}
+
+	# Simple inheritance
+	if ( @super ) {
+		return [
+			"our \@ISA     = '$super[0]';",
+		];
+	}
+
+	# No inheritance
+	return [ ];
 }
 
 sub wx {

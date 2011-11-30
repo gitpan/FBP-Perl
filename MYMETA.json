@@ -4,7 +4,7 @@
       "Adam Kennedy <adamk@cpan.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Module::Install version 1.04, CPAN::Meta::Converter version 2.112150",
+   "generated_by" : "Module::Install version 1.04, CPAN::Meta::Converter version 2.112621",
    "license" : [
       "perl_5"
    ],
@@ -40,6 +40,7 @@
          "requires" : {
             "FBP" : "0.38",
             "Params::Util" : "1.00",
+            "Scalar::Util" : "1.19",
             "perl" : "5.008005"
          }
       }
@@ -54,6 +55,6 @@
       },
       "x_ChangeLog" : "http://fisheye2.atlassian.com/changelog/cpan/trunk/FBP-Perl"
    },
-   "version" : "0.66",
+   "version" : "0.67",
    "x_module_name" : "FBP::Perl"
 }

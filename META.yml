@@ -28,9 +28,10 @@ no_index:
 requires:
   FBP: 0.38
   Params::Util: 1.00
+  Scalar::Util: 1.19
   perl: 5.8.5
 resources:
   ChangeLog: http://fisheye2.atlassian.com/changelog/cpan/trunk/FBP-Perl
   license: http://dev.perl.org/licenses/
   repository: http://svn.ali.as/cpan/trunk/FBP-Perl
-version: 0.66
+version: 0.67
