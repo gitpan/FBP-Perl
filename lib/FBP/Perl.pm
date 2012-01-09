@@ -55,14 +55,14 @@ use warnings;
 use B                  ();
 use Scalar::Util  1.19 ();
 use Params::Util  1.00 ();
-use FBP           0.38 ();
+use FBP           0.39 ();
 
-our $VERSION    = '0.71';
+our $VERSION    = '0.72';
 our $COMPATIBLE = '0.67';
 
-# Event Binding Table
-our %EVENT = (
-	# Common low level painting events
+# Event Macro Binding Table
+our %MACRO = (
+	# Common low level events
 	OnEraseBackground         => [ 1, 'EVT_ERASE_BACKGROUND'           ],
 	OnPaint                   => [ 1, 'EVT_PAINT'                      ],
 	OnUpdateUI                => [ 2, 'EVT_UPDATE_UI'                  ],
@@ -274,6 +274,60 @@ our %EVENT = (
 	OnTreeSelChanging         => [ 2, 'EVT_TREE_SEL_CHANGING'          ],
 	OnTreeKeyDown             => [ 2, 'EVT_TREE_KEY_DOWN'              ],
 	OnTreeItemMenu            => [ 2, 'EVT_TREE_ITEM_MENU'             ],
+);
+
+# Event Connect Binding Table
+our %CONNECT = (
+	# Common low level events
+	# OnEraseBackground        => 'wxEVT_ERASE_BACKGROUND',
+	# OnPaint                  => 'wxEVT_PAINT',
+	# OnUpdateUI               => 'wxEVT_UPDATE_UI',
+
+# # 	wxActivateEvent
+	# OnActivate               => 'wxEVT_ACTIVATE',
+	# OnActivateApp            => 'wxEVT_ACTIVATE_APP',
+
+# # 	wxCalendar
+	# OnCalendar               => 'wxEVT_CALENDAR_DOUBLECLICKED',
+	# OnCalendarSelChanged     => 'wxEVT_CALENDAR_SEL_CHANGED',
+	# OnCalendarDay            => 'wxEVT_CALENDAR_DAY_CHANGED',
+	# OnCalendarMonth          => 'wxEVT_CALENDAR_MONTH_CHANGED',
+	# OnCalendarYear           => 'wxEVT_CALENDAR_YEAR_CHANGED',
+	# OnCalendarWeekDayClicked => 'wxEVT_CALENDAR_WEEKDAY_CLICKED',
+
+# # 	wxChoicebook
+	# OnChoicebookPageChanged  => 'wxEVT_COMMAND_CHOICEBOOK_PAGE_CHANGED',
+	# OnChoicebookPageChanging => 'wxEVT_COMMAND_CHOICEBOOK_PAGE_CHANGING',
+
+# # 	wxCommandEvent
+	# OnButtonClick            => 'wxEVT_COMMAND_BUTTON_CLICKED',
+	# OnCheckBox               => 'wxEVT_COMMAND_CHECKBOX_CLICKED',
+	# OnChoice                 => 'wxEVT_COMMAND_CHOICE_SELECTED',
+	# OnCombobox               => 'wxEVT_COMMAND_COMBOBOX_SELECTED',
+	# OnListBox                => 'wxEVT_COMMAND_LISTBOX_SELECTED',
+	# OnListBoxDClick          => 'wxEVT_COMMAND_LISTBOX_DOUBLECLICKED',
+	# OnText                   => 'wxEVT_COMMAND_TEXT_UPDATED',
+	# OnTextEnter              => 'wxEVT_COMMAND_TEXT_ENTER',
+	# OnMenu                   => 'wxEVT_COMMAND_MENU_SELECTED',
+
+# # 	wxColourPickerCtrl
+	# OnColourChanged          => 'wxEVT_COLOURPICKER_CHANGED',
+
+# # 	wxCloseEvent
+	# OnClose                  => 'wxEVT_CLOSE_WINDOW',
+
+# # 	wxDatePickerCtrl
+	# OnDateChanged            => 'wxEVT_DATE_CHANGED',
+
+# # 	wxFilePickerCtrl
+	# OnFileChanged            => 'wxEVT_FILEPICKER_CHANGED',
+
+# # 	wxFocusEvent
+	# OnKillFocus              => 'wxEVT_KILL_FOCUS',
+	# OnSetFocus               => 'wxEVT_SET_FOCUS',
+
+# # 	wxFontPickerCtrl
+	# OnFontChanged            => 'wxEVT_FONTPICKER_CHANGED',
 );
 
 
@@ -777,11 +831,14 @@ sub form_wx {
 	if ( $self->find_plain( $topic => 'FBP::Grid' ) ) {
 		push @$lines, "use Wx::Grid ();";
 	}
-	if ( $self->find_plain( $topic => 'FBP::Calendar' ) ) {
+	if ( $self->find_plain( $topic => 'FBP::CalendarCtrl' ) ) {
 		push @$lines, "use Wx::Calendar ();";
 		push @$lines, "use Wx::DateTime ();";
 	} elsif ( $self->find_plain( $topic => 'FBP::DatePickerCtrl' ) ) {
 		push @$lines, "use Wx::DateTime ();";
+	}
+	if ( $self->find_plain( $topic => 'FBP::RichTextCtrl' ) ) {
+		push @$lines, "use Wx::RichText ();";
 	}
 	return $lines;
 }
@@ -1024,7 +1081,7 @@ sub form_methods {
 
 	# Add the event handler methods
 	foreach my $object ( @objects ) {
-		foreach my $event ( sort keys %EVENT ) {
+		foreach my $event ( sort keys %MACRO ) {
 			next unless $object->can($event);
 
 			my $name   = $object->name;
@@ -1126,7 +1183,7 @@ sub window_create {
 		$lines = $self->grid_create($window, $parent);
 	} elsif ( $window->isa('FBP::HtmlWindow') ) {
 		$lines = $self->htmlwindow_create($window, $parent);
-	} elsif ( $window->isa('FBP::HyperLink') ) {
+	} elsif ( $window->isa('FBP::HyperlinkCtrl') ) {
 		$lines = $self->hyperlink_create($window, $parent);
 	} elsif ( $window->isa('FBP::Listbook') ) {
 		# We emulate the creation of simple listbooks via treebooks
@@ -1326,6 +1383,7 @@ sub calendarctrl_create {
 	my $parent   = $self->object_parent(@_);
 	my $id       = $self->object_id($control);
 	# my $value    = $self->wx('wxDefaultDateTime'); # NOT IMPLEMENTED
+	my $value    = 'Wx::DateTime->new'; # Believed to be equivalent
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -1333,7 +1391,7 @@ sub calendarctrl_create {
 		$self->object_new($control),
 		"$parent,",
 		"$id,",
-		"undef,",
+		"$value,",
 		"$position,",
 		"$size,",
 		$self->window_style($control),
@@ -1471,7 +1529,8 @@ sub datepickerctrl_create {
 	my $control  = shift;
 	my $parent   = $self->object_parent(@_);
 	my $id       = $self->object_id($control);
-	my $value    = $self->wx('wxDefaultDateTime');
+	# my $value    = $self->wx('wxDefaultDateTime'); # NOT IMPLEMENTED
+	my $value    = 'Wx::DateTime->new'; # Believed to be equivalent
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -2121,6 +2180,7 @@ sub richtextctrl_create {
 	my $parent   = $self->object_parent(@_);
 	my $id       = $self->object_id($control);
 	# my $value    = $self->wx('wxEmptyString'); # NOT IMPLEMENTED
+	my $value    = $self->quote('');
 	my $position = $self->object_position($control);
 	my $size     = $self->object_wxsize($control);
 
@@ -2128,7 +2188,7 @@ sub richtextctrl_create {
 		$self->object_new($control),
 		"$parent,",
 		"$id,",
-		"undef,",
+		"$value,",
 		"$position,",
 		"$size,",
 		$self->window_style($control),
@@ -2825,7 +2885,7 @@ sub gridbagsizer_pack {
 			my $width  = $child->width;
 			my $height = $child->height;
 			push @lines, $self->nested(
-				"$variable->AddSpacer(",
+				"$variable->Add(",
 				"$width,",
 				"$height,",
 				"Wx::GBPosition->new( $row, $column ),",
@@ -2835,9 +2895,8 @@ sub gridbagsizer_pack {
 				");",
 			);
 		} else {
-			my $type = $child->isa('FBP::Sizer') ? 'Sizer' : 'Window';
 			push @lines, $self->nested(
-				"$variable->Add$type(",
+				"$variable->Add(",
 				$self->object_variable($child) . ',',
 				"Wx::GBPosition->new( $row, $column ),",
 				"Wx::GBSpan->new( $rowspan, $colspan ),",
@@ -3232,59 +3291,82 @@ sub window_hide {
 }
 
 sub object_bindings {
-	my $self     = shift;
-	my $object   = shift;
-	my $variable = $self->object_variable($object);
+	my $self   = shift;
+	my $object = shift;
+	return map {
+		$CONNECT{$_}
+		? $self->object_connect( $object, $_ )
+		: $self->object_macro( $object, $_ )
+	} grep {
+		$object->can($_) and $object->$_()
+	} sort keys %MACRO;
+}
 
-	my @lines = ();
-	foreach my $attribute ( sort keys %EVENT ) {
-		next unless $object->can($attribute);
+sub object_macro {
+	my $self      = shift;
+	my $object    = shift;
+	my $attribute = shift;
+	my $variable  = $self->object_variable($object);
+	my $method    = $object->$attribute() or return;
 
-		# Is there something to bind to
-		my $method = $object->$attribute() or next;
-
-		# Add the binding for it
-		my $args  = $EVENT{$attribute}->[0];
-		my $macro = $EVENT{$attribute}->[1];
-		if ( $args == 2 ) {
-			push @lines, (
-				"",
-				"Wx::Event::$macro(",
-				"\t\$self,",
-				"\t$variable,",
-				"\tsub {",
-				"\t\tshift->$method(\@_);",
-				"\t},",
-				");",
-			);
-			next;
-		}
-		if ( $variable eq '$self' ) {
-			push @lines, (
-				"",
-				"Wx::Event::$macro(",
-				"\t\$self,",
-				"\tsub {",
-				"\t\tshift->$method(\@_);",
-				"\t},",
-				");",
-			);
-			next;
-		}
-
-		# Using $self here is a cop out but ok for now
-		push @lines, (
+	# Add the binding for it
+	my $args  = $MACRO{$attribute}->[0];
+	my $macro = $MACRO{$attribute}->[1];
+	if ( $args == 2 ) {
+		return (
 			"",
 			"Wx::Event::$macro(",
+			"\t\$self,",
 			"\t$variable,",
 			"\tsub {",
-			"\t\t\$self->$method(\$_[1]);",
+			"\t\tshift->$method(\@_);",
+			"\t},",
+			");",
+		);
+	}
+	if ( $variable eq '$self' ) {
+		return (
+			"",
+			"Wx::Event::$macro(",
+			"\t\$self,",
+			"\tsub {",
+			"\t\tshift->$method(\@_);",
 			"\t},",
 			");",
 		);
 	}
 
-	return @lines;
+	# Using $self here is a cop out but ok for now
+	return (
+		"",
+		"Wx::Event::$macro(",
+		"\t$variable,",
+		"\tsub {",
+		"\t\t\$self->$method(\$_[1]);",
+		"\t},",
+		");",
+	);
+}
+
+sub object_connect {
+	my $self      = shift;
+	my $object    = shift;
+	my $attribute = shift;
+	my $variable  = $self->object_variable($object);
+	my $method    = $object->$attribute() or return;
+	my $constant  = $CONNECT{$attribute}  or return;
+
+	return (
+		"",
+		"\$self->Connect(",
+		"\t$variable,",
+		"\t-1,",
+		"\tWx::$constant,",
+		"\tsub {",
+		"\t\tshift->$method(\@_);",
+		"\t},",
+		");",
+	);
 }
 
 
@@ -3749,7 +3831,7 @@ Adam Kennedy E<lt>adamk@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2010 - 2011 Adam Kennedy.
+Copyright 2010 - 2012 Adam Kennedy.
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
