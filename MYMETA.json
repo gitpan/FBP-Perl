@@ -55,6 +55,6 @@
       },
       "x_ChangeLog" : "http://fisheye2.atlassian.com/changelog/cpan/trunk/FBP-Perl"
    },
-   "version" : "0.72",
+   "version" : "0.73",
    "x_module_name" : "FBP::Perl"
 }
